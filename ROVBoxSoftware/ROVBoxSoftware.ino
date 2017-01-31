@@ -1,5 +1,4 @@
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
 #include <OneWire.h>
 
 #define pinA          A0
@@ -12,39 +11,27 @@
 
 #define k 5.0 // Real Voltage between GND & 5V on arduino
 
-LiquidCrystal_I2C lcd(0x27, 20, 4); // Initiate LCD display 16x2
 OneWire ds(2);
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin(); // I2C
-
-  // LCD init
-  lcd.init();            
-  lcd.backlight();
-  lcd.setCursor(10, 3);
-  lcd.print("loading...")
 
   // Pins init
   pinMode(pinA, INPUT);
   pinMode(pinV, INPUT);
   pinMode(pinPWM_IN, INPUT);
   pinMode(pinPWM_OUT, OUTPUT);
-
-  // Loading time
-  delay(2500);
-  lcd.clear();
 }
 
 void loop() {
-
   // Read data from sensors & print data
   int current = analogRead(pinA);
   int voltage = getVoltage();
-  float temp = getCelcius();
+  int temp = (int) getCelcius();
   int rpm = analogRead(pinPWM_IN);
-  updateLCD((int) current, (int) voltage, (int) temp, (int) rpm);
-
+  int buf[] = { current, voltage, temp, rpm };
+  Serial.write(buf, 4);
+  
   // Write value based on the PSU temperature to the fans
   float value = temp / 60 * 255;
   if (value > 255) {
@@ -61,18 +48,6 @@ float getVoltage() {
   return (analogRead(pinV) * k / 1024.0) / (R2/(R1+R2));
 }
 
-void updateLCD(int current, int voltage, int temp, int rpm) {
-  Serial.println("Updating LCD display info");
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("current: " + String(current) + "A");
-  lcd.setCursor(0, 1);
-  lcd.print("voltage: " + String(voltage) + "V");
-  lcd.setCursor(0, 2);
-  lcd.print("temperature: " + String(temp) + "C");
-  lcd.setCursor(0, 3);
-  lcd.print("rpm" + String(rpm));
-}
 float getCelcius() {
   Serial.println("Temperature sensor information:");
   byte i;
