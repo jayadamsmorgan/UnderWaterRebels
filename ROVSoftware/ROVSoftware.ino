@@ -29,31 +29,42 @@ short min_speed = 0, max_speed = 255;
 signed char js_val[5];
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 
-int depth_and_pitch_update = 0;
+unsigned char depth_and_pitch_update = 0;
 
 // Function for controlling motor system
 void controlPeripherals() {
   // Auto modes realization:
-  
-  if (isAutoYaw) {
-    autoYaw();
-  }
-  if ((isAutoPitch && isAutoYaw) || js_val[2] == 0) {
+  if ((isAutoPitch && isAutoDepth) || js_val[2] == 0) {
+    Serial.println("Using AutoPitch & AutoDepth mode");
     depth_and_pitch_update++;
-    if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW)
+    // Enabling and disabling AutoPitch & AutoYaw alternately for correct work
+    if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW) 
       autoPitch();
     else if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW)
       autoDepth();
     if (depth_and_pitch_update >= 2 * DEPTH_AND_PITCH_UPDATE_WINDOW)
       depth_and_pitch_update = 0;
   } else if (isAutoPitch) {
+    Serial.println("Using AutoPitch mode");
     autoPitch();
   } else if (isAutoDepth) {
+    Serial.println("Using AutoDepth mode");
     autoDepth();
+  } else {
+    // Set vertical thrust
+    verticalMotorControl(verMotor1, js_val[2]);
+    verticalMotorControl(verMotor2, js_val[2]);
   }
   
-  if (!(isAutoDepth && isAutoPitch) && js_val[2] != 0) {
-    
+  // Auto yaw mode:
+  if (isAutoYaw) {
+    autoYaw();
+  } else {
+    // Set horizontal thrust
+    horizontalMotorControl(horMotor1, js_val[1], js_val[0], js_val[3]);
+    horizontalMotorControl(horMotor2, js_val[1], js_val[0], js_val[3]);
+    horizontalMotorControl(horMotor3, js_val[1], js_val[0], js_val[3]);
+    horizontalMotorControl(horMotor4, js_val[1], js_val[0], js_val[3]);
   }
 }
 
@@ -71,19 +82,28 @@ void autoDepth() {
   verticalMotorControl(verMotor2, value);
 }
 
-// Calculation PID for yaw
+// AutoYaw mode
 void autoYaw() {
-  horizontalMotorControl(
+  char value = pitchPID();
+  horizontalMotorControl(horMotor1, 0, 0, value);
+  horizontalMotorControl(horMotor2, 0, 0, value);
+  horizontalMotorControl(horMotor3, 0, 0, value);
+  horizontalMotorControl(horMotor4, 0, 0, value);
 }
 
 // Calculation PID for pitch    
 char pitchPID() {
-  //TODO calculation of pitchPID
+  // TODO calculation of pitchPID
 }
 
 // Calculation PID for depth
 char depthPID() {
-  //TODO calculation of depthPID
+  // TODO calculation of depthPID
+}
+
+// Calculation PID for yaw
+char yawPID() {
+  // TODO calculation of yawPID
 }
     
 // Function to control horizontal brushless motors
