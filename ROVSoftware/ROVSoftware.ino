@@ -80,7 +80,7 @@ void controlPeripherals() {
   if ((isAutoPitch && isAutoDepth) || js_val[2] == 0) {
     Serial.println("Using AutoPitch & AutoDepth mode");
     depth_and_pitch_update++;
-    // Enabling and disabling AutoPitch & AutoYaw alternately for correct work
+    // Enabling and disabling AutoPitch & AutoDepth alternately for correct work
     if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW) 
       autoPitch();
     else if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW)
@@ -90,11 +90,11 @@ void controlPeripherals() {
   } else if (isAutoPitch) {
     Serial.println("Using AutoPitch mode");
     autoPitch();
-    depthSetpoint = depth;
+    depthSetpoint = depth; // Set target for AutoDepth
   } else if (isAutoDepth) {
     Serial.println("Using AutoDepth mode");
     autoDepth();
-    pitchSetpoint = pitch;
+    pitchSetpoint = pitch; // Set target for AutoPitch
   } else {
     // Set vertical thrust
     verticalMotorControl(verMotor1, js_val[2]);
@@ -105,8 +105,9 @@ void controlPeripherals() {
     depthSetpoint = depth;
   }
   
-  // Auto yaw mode:
+  // AutoYaw mode:
   if (isAutoYaw) {
+    Serial.println("Using AutoYaw mode");
     autoYaw();
   } else {
     // Set horizontal thrust
@@ -114,32 +115,46 @@ void controlPeripherals() {
     horizontalMotorControl(horMotor2, js_val[1], js_val[0], js_val[3]);
     horizontalMotorControl(horMotor3, js_val[1], js_val[0], js_val[3]);
     horizontalMotorControl(horMotor4, js_val[1], js_val[0], js_val[3]);
+    
+    // Set target for AutoYaw
+    yawSetpoint = yaw;
   }
 }
 
 // AutoPitch mode
 void autoPitch() {
+  pitchInput = pitch;
   autoPitchPID.Compute();
   Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
-  Serial.print("Current pitch is: ");         Serial.println(pitch);
+  Serial.print("Current pitch is: ");        Serial.println(pitch);
   verticalMotorControl(verMotor1, (char) pitchOutput);
   verticalMotorControl(verMotor2, (char) -pitchOutput);
 }
 
 // AutoDepth mode
 void autoDepth() {
+  depthInput = depth;
   autoDepthPID.Compute();
   Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
   Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
-  Serial.print("Current depth is: ");         Serial.println(depth);
+  Serial.print("Current depth is: ");        Serial.println(depth);
   verticalMotorControl(verMotor1, (char) depthOutput);
   verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
 // AutoYaw mode
 void autoYaw() {
-  // TODO pitchPID
+  double rotationAngle = yawSetpoint - yaw;
+  if (abs(rotationAngle) > 180.0) {
+    if (rotationAngle < 0) {
+      rotationAngle = 360 - abs(rotationAngle);
+    } else if (rotationAngle > 0) {
+      rotationAngle = abs(rotaionAngle) - 360;
+    }
+  }
+  yawInput = rotationAngle;
+  autoYawPID.Compute();
   horizontalMotorControl(horMotor1, 0, 0, yawOutput);
   horizontalMotorControl(horMotor2, 0, 0, yawOutput);
   horizontalMotorControl(horMotor3, 0, 0, yawOutput);
