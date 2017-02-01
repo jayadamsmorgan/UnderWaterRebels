@@ -12,19 +12,33 @@
 #define MOTOR6PIN 12 // Some pin
 
 #define SERVO_MANIPULATOR_PIN 13 // Some pin
-#define SERVO_CAMERA_PIN 14 // Some pin
+#define SERVO_CAMERA_PIN      14 // Some pin
 
-#define SERVO_UPDATE_WINDOW 30 // Delay for updating servo's angle
+#define SERVO_UPDATE_WINDOW           30 // Delay for updating servo's angle
 #define DEPTH_AND_PITCH_UPDATE_WINDOW 250 // Delay for switching autoDepth & autoPitch
 
-#define CAMERA_ANGLE_DELTA 3
-#define MIN_CAMERA_ANGLE 0 // ?
-#define MAX_CAMERA_ANGLE 160 // ?
-#define MAX_BOTTOM_MANIP_ANGLE 160
-#define MIN_BOTTOM_MANIP_ANGLE 100
+#define CAMERA_ANGLE_DELTA 3 // ?
+#define MIN_CAMERA_ANGLE   0 // ?
+#define MAX_CAMERA_ANGLE   160 // ?
 
-#define INCOMING_PACKET_SIZE 9
+#define BOTTOM_MANIP_ANGLE_DELTA 3 // ?
+#define MAX_BOTTOM_MANIP_ANGLE   160 // ?
+#define MIN_BOTTOM_MANIP_ANGLE   100 // ?
+
+#define INCOMING_PACKET_SIZE  9
 #define OUTCOMING_PACKET_SIZE 10
+
+#define PITCH_KP 2 // ?
+#define PITCH_KI 1 // ?
+#define PITCH_KD 0.5 // ?
+
+#define DEPTH_KP 2 // ?
+#define DEPTH_KI 1 // ?
+#define DEPTH_KD 0.5 // ?
+
+#define YAW_KP   2 // ?
+#define YAW_KI   1 // ?
+#define YAW_KD   0.5 // ?
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
@@ -51,6 +65,15 @@ bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 unsigned char depth_and_pitch_update = 0;
 unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
+double pitchSetpoint, pitchInput, pitchOutput;
+PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD);
+
+double depthSetpoint, depthInput, depthOutput;
+PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD);
+
+double yawSetpoint, yawInput, yawOutput;
+PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD);
+
 // Function for controlling motor system
 void controlPeripherals() {
   // Auto modes realization:
@@ -67,13 +90,19 @@ void controlPeripherals() {
   } else if (isAutoPitch) {
     Serial.println("Using AutoPitch mode");
     autoPitch();
+    depthSetpoint = depth;
   } else if (isAutoDepth) {
     Serial.println("Using AutoDepth mode");
     autoDepth();
+    pitchSetpoint = pitch;
   } else {
     // Set vertical thrust
     verticalMotorControl(verMotor1, js_val[2]);
     verticalMotorControl(verMotor2, js_val[2]);
+    
+    // Set targets for AutoPitch & AutoDepth
+    pitchSetpoint = pitch;
+    depthSetpoint = depth;
   }
   
   // Auto yaw mode:
@@ -90,40 +119,31 @@ void controlPeripherals() {
 
 // AutoPitch mode
 void autoPitch() {
-  float value = pitchPID();
-  verticalMotorControl(verMotor1, value);
-  verticalMotorControl(verMotor2, -value);
+  autoPitchPID.Compute();
+  Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
+  Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
+  Serial.print("Current pitch is: ");         Serial.println(pitch);
+  verticalMotorControl(verMotor1, (char) pitchOutput);
+  verticalMotorControl(verMotor2, (char) -pitchOutput);
 }
 
 // AutoDepth mode
 void autoDepth() {
-  float value = depthPID();
-  verticalMotorControl(verMotor1, value);
-  verticalMotorControl(verMotor2, value);
+  autoDepthPID.Compute();
+  Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
+  Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
+  Serial.print("Current depth is: ");         Serial.println(depth);
+  verticalMotorControl(verMotor1, (char) depthOutput);
+  verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
 // AutoYaw mode
 void autoYaw() {
-  char value = pitchPID();
+  // TODO pitchPID
   horizontalMotorControl(horMotor1, 0, 0, value);
   horizontalMotorControl(horMotor2, 0, 0, value);
   horizontalMotorControl(horMotor3, 0, 0, value);
   horizontalMotorControl(horMotor4, 0, 0, value);
-}
-
-// Calculation PID for pitch    
-char pitchPID() {
-  // TODO calculation of pitchPID
-}
-
-// Calculation PID for depth
-char depthPID() {
-  // TODO calculation of depthPID
-}
-
-// Calculation PID for yaw
-char yawPID() {
-  // TODO calculation of yawPID
 }
 
 // Receiving messages from PC & parsing
@@ -250,17 +270,24 @@ void setup() {
   verMotor1.write(90);
   verMotor2.write(90);
   
+  // Ethernet & Serial port init
   Ethernet.begin(mac,ip);
   Udp.begin(8000);
-  Serial.begin(115200);
+  Serial.begin(250000);
   
+  // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
   camera.write(camera_angle);
   bottom_manip.attach(SERVO_MANIPULATOR_PIN);
   bottom_manip.write(bottom_manip_angle);
   
+  // Init PID settings
+  autoPitchPID.SetMode(AUTOMATIC);
+  autoDepthPID.SetMode(AUTOMATIC);
+  autoYawPID.SetMode(AUTOMATIC);
+  
   // Some delay for motors...
-  delay(2000);
+  delay(1500);
 }
 
 void loop() {
