@@ -28,12 +28,12 @@
 #define INCOMING_PACKET_SIZE  9
 #define OUTCOMING_PACKET_SIZE 10
 
-#define PITCH_KP 2 // ?
-#define PITCH_KI 1 // ?
+#define PITCH_KP 2.0 // ?
+#define PITCH_KI 1.0 // ?
 #define PITCH_KD 0.5 // ?
 
-#define DEPTH_KP 2 // ?
-#define DEPTH_KI 1 // ?
+#define DEPTH_KP 2.0 // ?
+#define DEPTH_KI 1.0 // ?
 #define DEPTH_KD 0.5 // ?
 
 #define YAW_KP   2 // ?
@@ -54,6 +54,7 @@ int camera_angle = (MAX_CAMERA_ANGLE + MIN_CAMERA_ANGLE) / 2, bottom_manip_angle
 unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
 float yaw = 0, pitch = 0, roll = 0;
+int depth = 0;
   
 short min_speed = 0, max_speed = 400;
 
@@ -63,16 +64,15 @@ bool buttons[7];
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 
 unsigned char depth_and_pitch_update = 0;
-unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
 double pitchSetpoint, pitchInput, pitchOutput;
-PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD);
+PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
 
 double depthSetpoint, depthInput, depthOutput;
-PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD);
+PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD, DIRECT);
 
 double yawSetpoint, yawInput, yawOutput;
-PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD);
+PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRECT);
 
 // Function for controlling motor system
 void controlPeripherals() {
@@ -140,10 +140,10 @@ void autoDepth() {
 // AutoYaw mode
 void autoYaw() {
   // TODO pitchPID
-  horizontalMotorControl(horMotor1, 0, 0, value);
-  horizontalMotorControl(horMotor2, 0, 0, value);
-  horizontalMotorControl(horMotor3, 0, 0, value);
-  horizontalMotorControl(horMotor4, 0, 0, value);
+  horizontalMotorControl(horMotor1, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor2, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor3, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor4, 0, 0, yawOutput);
 }
 
 // Receiving messages from PC & parsing
@@ -278,8 +278,8 @@ void setup() {
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
   camera.write(camera_angle);
-  bottom_manip.attach(SERVO_MANIPULATOR_PIN);
-  bottom_manip.write(bottom_manip_angle);
+  bottomManip.attach(SERVO_MANIPULATOR_PIN);
+  bottomManip.write(bottom_manip_angle);
   
   // Init PID settings
   autoPitchPID.SetMode(AUTOMATIC);
