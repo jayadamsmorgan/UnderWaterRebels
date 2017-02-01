@@ -191,6 +191,8 @@ char receiveMessage() {
 // Forming & sending packet to PC via UDP
 void sendReply() {
   Serial.print("PC is on :"); Serial.println(remote_device);
+  
+  Serial.println("Forming packet...");
   replyBuffer[0] = (depth >> 8) & 0xFF;
   replyBuffer[1] = depth & 0xFF;
   yaw *= 100;
@@ -205,7 +207,6 @@ void sendReply() {
   
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
-  Serial.println("Forming packet");
   Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
   Serial.println("Writing packet");
   Udp.endPacket();
