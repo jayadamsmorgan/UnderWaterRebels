@@ -150,7 +150,7 @@ void autoYaw() {
     if (rotationAngle < 0) {
       rotationAngle = 360 - abs(rotationAngle);
     } else if (rotationAngle > 0) {
-      rotationAngle = abs(rotaionAngle) - 360;
+      rotationAngle = abs(rotationAngle) - 360;
     }
   }
   yawInput = rotationAngle;
