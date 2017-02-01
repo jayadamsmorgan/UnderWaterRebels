@@ -83,7 +83,7 @@ void controlPeripherals() {
     // Enabling and disabling AutoPitch & AutoDepth alternately for correct work
     if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW) 
       autoPitch();
-    else if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW)
+    else if (depth_and_pitch_update > DEPTH_AND_PITCH_UPDATE_WINDOW)
       autoDepth();
     if (depth_and_pitch_update >= 2 * DEPTH_AND_PITCH_UPDATE_WINDOW)
       depth_and_pitch_update = 0;
