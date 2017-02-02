@@ -15,7 +15,6 @@
 #define SERVO_CAMERA_PIN      14 // Some pin
 
 #define SERVO_UPDATE_WINDOW           30 // Delay for updating servo's angle
-#define DEPTH_AND_PITCH_UPDATE_WINDOW 250 // Delay for switching autoDepth & autoPitch
 
 #define CAMERA_ANGLE_DELTA 3 // ?
 #define MIN_CAMERA_ANGLE   0 // ?
@@ -62,8 +61,6 @@ signed char js_val[5];
 bool buttons[7];
 
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
-
-unsigned char depth_and_pitch_update = 0;
 
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
