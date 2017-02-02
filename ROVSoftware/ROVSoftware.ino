@@ -79,14 +79,7 @@ void controlPeripherals() {
   // Auto modes realization:
   if ((isAutoPitch && isAutoDepth) || js_val[2] == 0) {
     Serial.println("Using AutoPitch & AutoDepth mode");
-    depth_and_pitch_update++;
-    // Enabling and disabling AutoPitch & AutoDepth alternately for correct work
-    if (depth_and_pitch_update <= DEPTH_AND_PITCH_UPDATE_WINDOW) 
-      autoPitch();
-    else if (depth_and_pitch_update > DEPTH_AND_PITCH_UPDATE_WINDOW)
-      autoDepth();
-    if (depth_and_pitch_update >= 2 * DEPTH_AND_PITCH_UPDATE_WINDOW)
-      depth_and_pitch_update = 0;
+    autoPitchAndDepth();
   } else if (isAutoPitch) {
     Serial.println("Using AutoPitch mode");
     autoPitch();
@@ -121,13 +114,63 @@ void controlPeripherals() {
   }
 }
 
+// AutoPitch & AutoDepth mode
+void autoPitchAndDepth() {
+  // Preserving ROV from motor work on the surface
+  if (depth == 0.0) {
+    return;
+  }
+  
+  depthInput = depth;
+  pitchInput = rotationAngle(pitch, pitchSetpoint);
+  
+  autoPitchPID.Compute();
+  autoDepthPID.Compute();
+
+  double output1, output2;
+  if (pitchOutput > 0) {
+    output1 = depthOutput + pitchOutput;
+    output2 = depthOutput - pitchOutput;
+  }
+  if (pitchOutput < 0) {
+    output1 = depthOutput - pitchOutput;
+    output2 = depthOutput + pitchOutput;
+  }
+
+  // Value correction:
+  if (output1 > 100.0) {
+    output1 = 100.0;
+  }
+  if (output1 < -100.0) {
+    output1 = -100.0;
+  }
+  if (output2 > 100.0) {
+    output2 = 100.0;
+  }
+  if (output2 < -100.0) {
+    output2 = -100.0;
+  }
+  
+  verticalMotorControl(verMotor1, (char) output1);
+  verticalMotorControl(verMotor2, (char) output2);
+}
+
 // AutoPitch mode
 void autoPitch() {
-  pitchInput = pitch;
+  pitchInput = rotationAngle(pitch, pitchSetpoint);
   autoPitchPID.Compute();
   Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
   Serial.print("Current pitch is: ");        Serial.println(pitch);
+  
+  // Value correction:
+  if (pitchOutput > 100.0) {
+    pitchOutput = 100.0;
+  }
+  if (pitchOutput < -100.0) {
+    pitchOutput = -100.0;
+  }
+  
   verticalMotorControl(verMotor1, (char) pitchOutput);
   verticalMotorControl(verMotor2, (char) -pitchOutput);
 }
@@ -139,26 +182,39 @@ void autoDepth() {
   Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
   Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
   Serial.print("Current depth is: ");        Serial.println(depth);
+
+  // Value correction:
+  if (depthOutput > 100.0) {
+    depthOutput = 100.0;
+  }
+  if (depthOutput < -100.0) {
+    depthOutput = -100.0;
+  }
+  
   verticalMotorControl(verMotor1, (char) depthOutput);
   verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
 // AutoYaw mode
 void autoYaw() {
-  double rotationAngle = yawSetpoint - yaw;
-  if (abs(rotationAngle) > 180.0) {
-    if (rotationAngle < 0) {
-      rotationAngle = 360 - abs(rotationAngle);
-    } else if (rotationAngle > 0) {
-      rotationAngle = abs(rotationAngle) - 360;
-    }
-  }
-  yawInput = rotationAngle;
+  yawInput = rotationAngle(yaw, yawSetpoint);
   autoYawPID.Compute();
   horizontalMotorControl(horMotor1, 0, 0, yawOutput);
   horizontalMotorControl(horMotor2, 0, 0, yawOutput);
   horizontalMotorControl(horMotor3, 0, 0, yawOutput);
   horizontalMotorControl(horMotor4, 0, 0, yawOutput);
+}
+
+// Function for correct angles for PID
+double rotationAngle(double currentAngle, double targetAngle) {
+  double rotationAngle = yawSetpoint - yaw;
+  if (abs(rotationAngle) > 180.0) {
+    if (rotationAngle < 0) {
+      rotationAngle = 360.0 - abs(rotationAngle);
+    } else if (rotationAngle > 0) {
+      rotationAngle = abs(rotationAngle) - 360.0;
+    }
+  }
 }
 
 // Receiving messages from PC & parsing
@@ -195,9 +251,9 @@ void sendReply() {
   Serial.println("Forming packet...");
   replyBuffer[0] = (depth >> 8) & 0xFF;
   replyBuffer[1] = depth & 0xFF;
-  yaw *= 100;
-  pitch *= 100;
-  roll *= 100;
+  yaw *= 100.0;
+  pitch *= 100.0;
+  roll *= 100.0;
   replyBuffer[2] = ((int)yaw >> 8) & 0xFF;
   replyBuffer[3] = ((int)yaw) & 0xFF;
   replyBuffer[4] = ((int)pitch >> 8) & 0xFF;
