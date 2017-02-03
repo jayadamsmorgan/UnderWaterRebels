@@ -18,8 +18,10 @@
 #define MAIN_MANIP_TIGHT_PINA    16  // Some pin
 #define MAIN_MANIP_TIGHT_PINB    17  // Some pin
 
-#define SERVO_MANIPULATOR_PIN    18  // Some pin
-#define SERVO_CAMERA_PIN         19  // Some pin
+#define MAIN_MANIP_TIGHT_PINPWM  18  // Some pin
+
+#define SERVO_MANIPULATOR_PIN    19  // Some pin
+#define SERVO_CAMERA_PIN         20  // Some pin
 
 #define SERVO_UPDATE_WINDOW      30  // Delay for updating servo's angle
 
@@ -59,13 +61,16 @@ Servo camera, bottomManip;
 int camera_angle = (MAX_CAMERA_ANGLE + MIN_CAMERA_ANGLE) / 2, bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
 unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
+char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
+
 float yaw = 0, pitch = 0, roll = 0;
 int depth = 0;
   
 short min_speed = 0, max_speed = 400;
 
 signed char js_val[5];
-bool buttons[16];
+
+bool buttons[8];
 
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 bool leak[8];
@@ -119,6 +124,40 @@ void controlPeripherals() {
     // Set target for AutoYaw
     yawSetpoint = yaw;
   }
+
+  tightenManipulator(manTightDir);
+  
+  unsigned long long current_time = millis();
+  if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
+    if (servoCamDir > 0) {
+      camera_angle += CAMERA_ANGLE_DELTA;
+      if (camera_angle > MAX_CAMERA_ANGLE)
+        camera_angle = MAX_CAMERA_ANGLE;
+    } else {
+      camera_angle -= CAMERA_ANGLE_DELTA;
+      if (camera_angle < MIN_CAMERA_ANGLE)
+        camera_angle = MIN_CAMERA_ANGLE;
+    }
+  }
+  camera.write(camera_angle);
+  prev_camera_servo_update = millis();
+
+  current_time = millis();
+  if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
+    if (botManipDir > 0) {
+      bottom_manip_angle += BOTTOM_MANIP_ANGLE_DELTA;
+      if (bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
+        bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
+    } else {
+      bottom_manip_angle -= BOTTOM_MANIP_ANGLE_DELTA;
+      if (bottom_manip_angle < MIN_BOTTOM_MANIP_ANGLE)
+        bottom_manip_angle = MIN_BOTTOM_MANIP_ANGLE;
+    }
+  }
+  bottomManip.write(bottom_manip_angle);
+  prev_manip_servo_update = millis();
+  
+  rotateManipulator(js_val[4]);
 }
 
 // AutoPitch & AutoDepth mode
@@ -222,12 +261,12 @@ double rotationAngle(double currentAngle, double targetAngle) {
 // Receiving messages from PC & parsing
 char receiveMessage() {
   int packetSize = Udp.parsePacket();
-  if (packetSize > 0){
+  if (packetSize > 0) {
     Serial.print("Received packet of size: ");
     Serial.print(packetSize);
   }
   if(packetSize == INCOMING_PACKET_SIZE) {
-    Serial.println(". Size is correct");
+    Serial.println(". Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
     for (int i = 0; i < 5; ++i)
@@ -235,19 +274,53 @@ char receiveMessage() {
     for (int i = 0; i < 8; ++i) {
       buttons[i] = (packetBuffer[5] >> i) & 1;
     }
-    char val = 0;
-    for (int i = 0; i < 3; ++i) {
-      val += (packetBuffer[6] >> i) & 1;
+    
+    if (buttons[0] == 1 && buttons[1] == 0) {
+      servoCamDir = -1;
+    } else if (buttons[0] == 0 && buttons[1] == 1) {
+      servoCamDir = 1;
+    } else {
+      servoCamDir = 0;
     }
-    speedMode = val;
+
+    if (buttons[2] == 1 && buttons[3] == 0) {
+      manTightDir = -1;
+    } else if (buttons[2] == 0 && buttons[3] == 1) {
+      manTightDir = 1;
+    } else {
+      manTightDir = 0;
+    }
+
+    if (buttons[4] == 1 && buttons[5] == 0) {
+      botManipDir = -1;
+    } else if (buttons[4] == 0 && buttons[5] == 1) {
+      botManipDir = 1;
+    } else {
+      botManipDir = 0;
+    }
+
+    char bit1 = (packetBuffer[6]) & 1;
+    char bit2 = (packetBuffer[6] >> 1) & 1;
+    char bit3 = (packetBuffer[6] >> 2) & 1;
+    if (bit1 == 1) {
+      speedMode = 1;
+    }
+    if (bit2 == 1) {
+      speedMode = 2;
+    } 
+    if (bit3 == 1) {
+      speedMode = 3;
+    } 
+    
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
     isAutoPitch = (packetBuffer[6] >> 4) & 1;
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
     return 1;
   }
   else {
-    Serial.println(". Size is incorrect");
+    Serial.println(". Size is incorrect.");
     return 0;
+  }
 }
 
 // Forming & sending packet to PC via UDP
@@ -271,9 +344,9 @@ void sendReply() {
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
   Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
-  Serial.println("Writing packet");
+  Serial.println("Writing packet...");
   Udp.endPacket();
-  Serial.println("Endpacket");
+  Serial.println("Endpacket...");
   return;
 }
     
