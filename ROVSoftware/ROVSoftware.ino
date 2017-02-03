@@ -17,9 +17,10 @@
 
 #define MAIN_MANIP_TIGHT_PINA    16  // Some pin
 #define MAIN_MANIP_TIGHT_PINB    17  // Some pin
+#define MAIN_MANIP_TIGHT_PINPWM  18  // Some pin
 
-#define SERVO_MANIPULATOR_PIN    18  // Some pin
-#define SERVO_CAMERA_PIN         19  // Some pin
+#define SERVO_MANIPULATOR_PIN    19  // Some pin
+#define SERVO_CAMERA_PIN         20  // Some pin
 
 #define SERVO_UPDATE_WINDOW      30  // Delay for updating servo's angle
 
