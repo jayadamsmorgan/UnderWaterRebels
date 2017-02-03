@@ -122,6 +122,40 @@ void controlPeripherals() {
     // Set target for AutoYaw
     yawSetpoint = yaw;
   }
+
+  tightenManipulator(manTightDir);
+  
+  unsigned long long current_time = millis();
+  if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
+    if (servoCamDir > 0) {
+      camera_angle += CAMERA_ANGLE_DELTA;
+      if (camera_angle > MAX_CAMERA_ANGLE)
+        camera_angle = MAX_CAMERA_ANGLE;
+    } else {
+      camera_angle -= CAMERA_ANGLE_DELTA;
+      if (camera_angle < MIN_CAMERA_ANGLE)
+        camera_angle = MIN_CAMERA_ANGLE;
+    }
+  }
+  camera.write(camera_angle);
+  prev_camera_servo_update = millis();
+
+  current_time = millis();
+  if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
+    if (botManipDir > 0) {
+      bottom_manip_angle += BOTTOM_MANIP_ANGLE_DELTA;
+      if (bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
+        bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
+    } else {
+      bottom_manip_angle -= BOTTOM_MANIP_ANGLE_DELTA;
+      if (bottom_manip_angle < MIN_BOTTOM_MANIP_ANGLE)
+        bottom_manip_angle = MIN_BOTTOM_MANIP_ANGLE;
+    }
+  }
+  bottomManip.write(bottom_manip_angle);
+  prev_manip_servo_update = millis();
+  
+  rotateManipulator(js_val[4]);
 }
 
 // AutoPitch & AutoDepth mode
@@ -225,7 +259,7 @@ double rotationAngle(double currentAngle, double targetAngle) {
 // Receiving messages from PC & parsing
 char receiveMessage() {
   int packetSize = Udp.parsePacket();
-  if (packetSize > 0){
+  if (packetSize > 0) {
     Serial.print("Received packet of size: ");
     Serial.print(packetSize);
   }
