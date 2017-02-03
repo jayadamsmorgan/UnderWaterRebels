@@ -4,40 +4,40 @@
 #include <Servo.h>
 #include <PID_v1.h>
 
-#define MOTOR1PIN 7 // Some pin
-#define MOTOR2PIN 8 // Some pin
-#define MOTOR3PIN 9 // Some pin
-#define MOTOR4PIN 10 // Some pin
-#define MOTOR5PIN 11 // Some pin
-#define MOTOR6PIN 12 // Some pin
+#define MOTOR1PIN                7   // Some pin
+#define MOTOR2PIN                8   // Some pin
+#define MOTOR3PIN                9   // Some pin
+#define MOTOR4PIN                10  // Some pin
+#define MOTOR5PIN                11  // Some pin
+#define MOTOR6PIN                12  // Some pin
 
-#define SERVO_MANIPULATOR_PIN 13 // Some pin
-#define SERVO_CAMERA_PIN      14 // Some pin
+#define SERVO_MANIPULATOR_PIN    13  // Some pin
+#define SERVO_CAMERA_PIN         14  // Some pin
 
-#define SERVO_UPDATE_WINDOW           30 // Delay for updating servo's angle
+#define SERVO_UPDATE_WINDOW      30  // Delay for updating servo's angle
 
-#define CAMERA_ANGLE_DELTA 3 // ?
-#define MIN_CAMERA_ANGLE   0 // ?
-#define MAX_CAMERA_ANGLE   160 // ?
+#define CAMERA_ANGLE_DELTA       3   // ?
+#define MIN_CAMERA_ANGLE         0   // ?
+#define MAX_CAMERA_ANGLE         160 // ?
 
-#define BOTTOM_MANIP_ANGLE_DELTA 3 // ?
+#define BOTTOM_MANIP_ANGLE_DELTA 3   // ?
 #define MAX_BOTTOM_MANIP_ANGLE   160 // ?
 #define MIN_BOTTOM_MANIP_ANGLE   100 // ?
 
-#define INCOMING_PACKET_SIZE  9
-#define OUTCOMING_PACKET_SIZE 10
+#define INCOMING_PACKET_SIZE     9
+#define OUTCOMING_PACKET_SIZE    10
 
-#define PITCH_KP 2.0 // ?
-#define PITCH_KI 1.0 // ?
-#define PITCH_KD 0.5 // ?
+#define PITCH_KP                 2.0 // ?
+#define PITCH_KI                 1.0 // ?
+#define PITCH_KD                 0.5 // ?
 
-#define DEPTH_KP 2.0 // ?
-#define DEPTH_KI 1.0 // ?
-#define DEPTH_KD 0.5 // ?
+#define DEPTH_KP                 2.0 // ?
+#define DEPTH_KI                 1.0 // ?
+#define DEPTH_KD                 0.5 // ?
 
-#define YAW_KP   2 // ?
-#define YAW_KI   1 // ?
-#define YAW_KD   0.5 // ?
+#define YAW_KP                   2   // ?
+#define YAW_KI                   1   // ?
+#define YAW_KD                   0.5 // ?
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
@@ -125,14 +125,9 @@ void autoPitchAndDepth() {
   autoDepthPID.Compute();
 
   double output1, output2;
-  if (pitchOutput > 0) {
-    output1 = depthOutput + pitchOutput;
-    output2 = depthOutput - pitchOutput;
-  }
-  if (pitchOutput < 0) {
-    output1 = depthOutput - pitchOutput;
-    output2 = depthOutput + pitchOutput;
-  }
+
+  output1 = depthOutput + pitchOutput;
+  output2 = depthOutput - pitchOutput;
 
   // Value correction:
   if (output1 > 100.0) {
@@ -359,6 +354,21 @@ void setup() {
   delay(1500);
 }
 
+// Function for updating yaw, pitch, roll
+void updateYPR() {
+  // TODO yaw, pitch, roll update
+}
+
+// Function for updating depth
+void updateDepth() {
+  // TODO depth update
+}
+
 void loop() {
-  
+  if (receiveMessage() == 1) {
+    sendReply();
+  }
+  controlPeripherals();
+  updateYPR();
+  updateDepth();
 }
