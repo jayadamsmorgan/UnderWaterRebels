@@ -11,8 +11,15 @@
 #define MOTOR5PIN                11  // Some pin
 #define MOTOR6PIN                12  // Some pin
 
-#define SERVO_MANIPULATOR_PIN    13  // Some pin
-#define SERVO_CAMERA_PIN         14  // Some pin
+#define MAIN_MANIP_ROT_PINA      13  // Some pin
+#define MAIN_MANIP_ROT_PINB      14  // Some pin
+#define MAIN_MANIP_ROT_PINPWM    15  // Some pin
+
+#define MAIN_MANIP_TIGHT_PINA    16  // Some pin
+#define MAIN_MANIP_TIGHT_PINB    17  // Some pin
+
+#define SERVO_MANIPULATOR_PIN    18  // Some pin
+#define SERVO_CAMERA_PIN         19  // Some pin
 
 #define SERVO_UPDATE_WINDOW      30  // Delay for updating servo's angle
 
@@ -24,7 +31,7 @@
 #define MAX_BOTTOM_MANIP_ANGLE   160 // ?
 #define MIN_BOTTOM_MANIP_ANGLE   100 // ?
 
-#define INCOMING_PACKET_SIZE     9
+#define INCOMING_PACKET_SIZE     7
 #define OUTCOMING_PACKET_SIZE    10
 
 #define PITCH_KP                 2.0 // ?
@@ -41,8 +48,8 @@
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
-char packetBuffer[INCOMING_PACKET_SIZE]; // Buffer to hold incoming packet,
-unsigned char replyBuffer[OUTCOMING_PACKET_SIZE]; // A string to send back
+char packetBuffer[INCOMING_PACKET_SIZE];
+unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
   
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
@@ -58,9 +65,12 @@ int depth = 0;
 short min_speed = 0, max_speed = 400;
 
 signed char js_val[5];
-bool buttons[7];
+bool buttons[16];
 
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
+bool leak[8];
+
+char speedMode = 3;
 
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
@@ -101,10 +111,10 @@ void controlPeripherals() {
     autoYaw();
   } else {
     // Set horizontal thrust
-    horizontalMotorControl(horMotor1, js_val[1], js_val[0], js_val[3]);
-    horizontalMotorControl(horMotor2, js_val[1], js_val[0], js_val[3]);
-    horizontalMotorControl(horMotor3, js_val[1], js_val[0], js_val[3]);
-    horizontalMotorControl(horMotor4, js_val[1], js_val[0], js_val[3]);
+    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
     
     // Set target for AutoYaw
     yawSetpoint = yaw;
@@ -126,8 +136,8 @@ void autoPitchAndDepth() {
 
   double output1, output2;
 
-  output1 = depthOutput + pitchOutput;
-  output2 = depthOutput - pitchOutput;
+  output1 = (depthOutput + pitchOutput) / 1.5;
+  output2 = (depthOutput - pitchOutput) / 1.5;
 
   // Value correction:
   if (output1 > 100.0) {
@@ -214,25 +224,29 @@ char receiveMessage() {
   int packetSize = Udp.parsePacket();
   if (packetSize > 0){
     Serial.print("Received packet of size: ");
-    Serial.println(packetSize);
+    Serial.print(packetSize);
   }
   if(packetSize == INCOMING_PACKET_SIZE) {
-    Serial.println("Received packet with correct size");
+    Serial.println(". Size is correct");
     remote_device = Udp.remoteIP();
-    Udp.read(packetBuffer , INCOMING_PACKET_SIZE);
+    Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
     for (int i = 0; i < 5; ++i)
       js_val[i] = (signed char)packetBuffer[i];
-    min_speed = (unsigned char)packetBuffer[5];
-    max_speed = (unsigned char)packetBuffer[6];
-    isAutoDepth = packetBuffer[8] & 1;
-    isAutoPitch = (packetBuffer[8] >> 1) & 1;
-    isAutoYaw = (packetBuffer[8] >> 2) & 1;
-    for (int i = 0; i < 7; ++i){
-      buttons[i] = (packetBuffer[7] >> i) & 1;
+    for (int i = 0; i < 8; ++i) {
+      buttons[i] = (packetBuffer[5] >> i) & 1;
     }
+    char val = 0;
+    for (int i = 0; i < 3; ++i) {
+      val += (packetBuffer[6] >> i) & 1;
+    }
+    speedMode = val;
+    isAutoDepth = (packetBuffer[6] >> 3) & 1;
+    isAutoPitch = (packetBuffer[6] >> 4) & 1;
+    isAutoYaw = (packetBuffer[6] >> 5) & 1;
     return 1;
   }
-  else
+  else {
+    Serial.println(". Size is incorrect");
     return 0;
 }
 
@@ -241,18 +255,19 @@ void sendReply() {
   Serial.print("PC is on :"); Serial.println(remote_device);
   
   Serial.println("Forming packet...");
-  replyBuffer[0] = (depth >> 8) & 0xFF;
-  replyBuffer[1] = depth & 0xFF;
-  yaw *= 100.0;
-  pitch *= 100.0;
-  roll *= 100.0;
-  replyBuffer[2] = ((int)yaw >> 8) & 0xFF;
-  replyBuffer[3] = ((int)yaw) & 0xFF;
-  replyBuffer[4] = ((int)pitch >> 8) & 0xFF;
-  replyBuffer[5] = ((int)pitch) & 0xFF;
-  replyBuffer[6] = ((int)roll >> 8) & 0xFF;
-  replyBuffer[7] = ((int)roll) & 0xFF;
-  
+  replyBuffer[0] = ((int) (yaw * 100.0) >> 8) & 0xFF;
+  replyBuffer[1] = ((int) (yaw * 100.0)) & 0xFF;
+  replyBuffer[2] = ((int) (pitch * 100.0) >> 8) & 0xFF;
+  replyBuffer[3] = ((int) (pitch * 100.0)) & 0xFF;
+  replyBuffer[4] = ((int) (roll * 100.0) >> 8) & 0xFF;
+  replyBuffer[5] = ((int) (roll * 100.0)) & 0xFF;
+  replyBuffer[6] = ((int) (depth * 100.0) >> 8) & 0xFF;
+  replyBuffer[7] = ((int) (depth * 100.0)) & 0xFF;
+  for (int i = 0; i < 8; ++i) {
+    replyBuffer[8] |= leak[i] << i;
+  }
+  //replyBuffer[9] = ...
+    
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
   Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
@@ -266,10 +281,10 @@ void sendReply() {
 void horizontalMotorControl(Servo motor, char x, char y, char z) {
   short POW = 0;
   float sum = x + y + z;
-  if(sum > 100) sum = 100;
-  if(sum < (-100)) sum = -100;
+  if(sum > 100.0) sum = 100.0;
+  if(sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
-  POW = short(sum * (float(max_speed - min_speed) / 100));
+  POW = short(sum * (float(max_speed - min_speed) / 100.0));
   motor.writeMicroseconds(1460 + POW);
 }
 
@@ -277,43 +292,47 @@ void horizontalMotorControl(Servo motor, char x, char y, char z) {
 void verticalMotorControl(Servo motor, short z) {
   short POW = 0;
   float sum = z;
-  if(sum > 100) sum = 100;
-  if(sum < (-100)) sum = -100;
+  if(sum > 100.0) sum = 100.0;
+  if(sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
-  POW = short(sum * (float(max_speed - min_speed) / 100));
+  POW = short(sum * (float(max_speed - min_speed) / 100.0));
   motor.writeMicroseconds(1460 + POW);
 }
 
 // Function to rotate manipulator
-void rotateManipulator(char PinA, char PinB, char dir) {
-  if (dir > 0){
-    digitalWrite(PinA, HIGH);
-    digitalWrite(PinB, LOW);
+void rotateManipulator(short m) {
+  if (m > 0){
+    digitalWrite(MAIN_MANIP_ROT_PINA, HIGH);
+    digitalWrite(MAIN_MANIP_ROT_PINB, LOW);
   }
-  if (dir < 0){
-    digitalWrite(PinA, LOW);
-    digitalWrite(PinB, HIGH);
+  if (m < 0){
+    digitalWrite(MAIN_MANIP_ROT_PINA, LOW);
+    digitalWrite(MAIN_MANIP_ROT_PINB, HIGH);
   }
-  if (dir == 0){
-    digitalWrite(PinA, LOW);
-    digitalWrite(PinB, LOW);
+  if (m == 0){
+    digitalWrite(MAIN_MANIP_ROT_PINA, LOW);
+    digitalWrite(MAIN_MANIP_ROT_PINB, LOW);
   }
+  short POW = 0;
+  POW = short(abs(m) * 255.0 / 100.0);
+  analogWrite(MAIN_MANIP_ROT_PINPWM, POW);
 }
 
 // Function to tight manipulator
-void tightenManipulator(char PinA, char PinB, char dir) {
+void tightenManipulator(char dir) {
   if (dir > 0){
-    digitalWrite(PinA, HIGH);
-    digitalWrite(PinB, LOW);
+    digitalWrite(MAIN_MANIP_TIGHT_PINA, HIGH);
+    digitalWrite(MAIN_MANIP_TIGHT_PINB, LOW);
   }
   if (dir < 0){
-    digitalWrite(PinA, LOW);
-    digitalWrite(PinB, HIGH);
+    digitalWrite(MAIN_MANIP_TIGHT_PINA, LOW);
+    digitalWrite(MAIN_MANIP_TIGHT_PINB, HIGH);
   }
   if (dir == 0){
-    digitalWrite(PinA, LOW);
-    digitalWrite(PinB, LOW);
+    digitalWrite(MAIN_MANIP_TIGHT_PINA, LOW);
+    digitalWrite(MAIN_MANIP_TIGHT_PINB, LOW);
   }
+  analogWrite(MAIN_MANIP_TIGHT_PINPWM, 255);
 }
 
 void setup() {
@@ -365,10 +384,10 @@ void updateDepth() {
 }
 
 void loop() {
+  updateYPR();
+  updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
   controlPeripherals();
-  updateYPR();
-  updateDepth();
 }
