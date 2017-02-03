@@ -17,6 +17,7 @@
 
 #define MAIN_MANIP_TIGHT_PINA    16  // Some pin
 #define MAIN_MANIP_TIGHT_PINB    17  // Some pin
+
 #define MAIN_MANIP_TIGHT_PINPWM  18  // Some pin
 
 #define SERVO_MANIPULATOR_PIN    19  // Some pin
@@ -68,6 +69,7 @@ int depth = 0;
 short min_speed = 0, max_speed = 400;
 
 signed char js_val[5];
+
 bool buttons[8];
 
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
@@ -309,7 +311,7 @@ char receiveMessage() {
     if (bit3 == 1) {
       speedMode = 3;
     } 
-
+    
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
     isAutoPitch = (packetBuffer[6] >> 4) & 1;
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
