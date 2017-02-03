@@ -248,6 +248,7 @@ char receiveMessage() {
   else {
     Serial.println(". Size is incorrect");
     return 0;
+  }
 }
 
 // Forming & sending packet to PC via UDP
