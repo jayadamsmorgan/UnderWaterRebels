@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <Servo.h>
 #include <PID_v1.h>
+#include <SparkFun_MS5803_I2C.h>
 
 #define MOTOR1PIN                5    // Some pin
 #define MOTOR2PIN                6    // Some pin
@@ -88,6 +89,11 @@ char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
 
 float yaw = 0, pitch = 0, roll = 0;
 int depth = 0;
+
+MS5803 sensor(ADDRESS_LOW);
+
+// Create variables to store results for depth calculations
+double pressure_abs, pressure_baseline;
 
 signed char js_val[5];
 bool buttons[8];
@@ -481,6 +487,10 @@ void setup() {
   
   // Some delay for motors...
   delay(1000);
+  // Retrieve calibration constants for conversion math.
+  sensor.reset();
+  sensor.begin();  
+  pressure_baseline = sensor.getPressure(ADC_4096);
 }
 
 // Function for updating yaw, pitch, roll
@@ -490,8 +500,20 @@ void updateYPR() {
 
 // Function for updating depth
 void updateDepth() {
-  // TODO depth update
+  // Read pressure from the sensor in mbar.
+  pressure_abs = sensor.getPressure(ADC_4096);
+
+  // Taking our baseline pressure at the beginning we can find an approximate
+  // change in altitude based on the differences in pressure.   
+  depth = altitude(pressure_abs , pressure_baseline);
 }
+
+// Given a pressure measurement P (mbar) and the pressure at a baseline P0 (mbar),
+// return altitude (meters) above baseline.
+double altitude(double P, double P0) {
+  return(44330.0*(1-pow(P/P0,1/5.255)));
+}
+  
 
 void loop() {
   updateYPR();
