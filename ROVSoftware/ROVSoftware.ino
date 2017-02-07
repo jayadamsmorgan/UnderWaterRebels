@@ -4,48 +4,72 @@
 #include <Servo.h>
 #include <PID_v1.h>
 
-#define MOTOR1PIN                7   // Some pin
-#define MOTOR2PIN                8   // Some pin
-#define MOTOR3PIN                9   // Some pin
-#define MOTOR4PIN                10  // Some pin
-#define MOTOR5PIN                11  // Some pin
-#define MOTOR6PIN                12  // Some pin
+#define MOTOR1PIN                5    // Some pin
+#define MOTOR2PIN                6    // Some pin
+#define MOTOR3PIN                3    // Some pin
+#define MOTOR4PIN                9    // Some pin
+#define MOTOR5PIN                11   // Some pin
+#define MOTOR6PIN                12   // Some pin
 
-#define MAIN_MANIP_ROT_PINA      13  // Some pin
-#define MAIN_MANIP_ROT_PINB      14  // Some pin
-#define MAIN_MANIP_ROT_PINPWM    15  // Some pin
+#define MAIN_MANIP_ROT_PINA      13   // Some pin
+#define MAIN_MANIP_ROT_PINB      14   // Some pin
+#define MAIN_MANIP_ROT_PINPWM    15   // Some pin
 
-#define MAIN_MANIP_TIGHT_PINA    16  // Some pin
-#define MAIN_MANIP_TIGHT_PINB    17  // Some pin
-#define MAIN_MANIP_TIGHT_PINPWM  18  // Some pin
+#define MAIN_MANIP_TIGHT_PINA    16   // Some pin
+#define MAIN_MANIP_TIGHT_PINB    17   // Some pin
+#define MAIN_MANIP_TIGHT_PINPWM  18   // Some pin
 
-#define SERVO_MANIPULATOR_PIN    19  // Some pin
-#define SERVO_CAMERA_PIN         20  // Some pin
+#define SERVO_MANIPULATOR_PIN    19   // Some pin
+#define SERVO_CAMERA_PIN         20   // Some pin
 
-#define SERVO_UPDATE_WINDOW      30  // Delay for updating servo's angle
+#define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 
-#define CAMERA_ANGLE_DELTA       3   // ?
-#define MIN_CAMERA_ANGLE         0   // ?
-#define MAX_CAMERA_ANGLE         160 // ?
+#define CAMERA_ANGLE_DELTA       3    // ?
+#define MIN_CAMERA_ANGLE         0    // ?
+#define MAX_CAMERA_ANGLE         160  // ?
 
-#define BOTTOM_MANIP_ANGLE_DELTA 3   // ?
-#define MAX_BOTTOM_MANIP_ANGLE   160 // ?
-#define MIN_BOTTOM_MANIP_ANGLE   100 // ?
+#define BOTTOM_MANIP_ANGLE_DELTA 3    // ?
+#define MAX_BOTTOM_MANIP_ANGLE   160  // ?
+#define MIN_BOTTOM_MANIP_ANGLE   100  // ?
 
 #define INCOMING_PACKET_SIZE     7
 #define OUTCOMING_PACKET_SIZE    10
 
-#define PITCH_KP                 2.0 // ?
-#define PITCH_KI                 1.0 // ?
-#define PITCH_KD                 0.5 // ?
+#define PITCH_KP                 2.0  // ?
+#define PITCH_KI                 1.0  // ?
+#define PITCH_KD                 0.5  // ?
 
-#define DEPTH_KP                 2.0 // ?
-#define DEPTH_KI                 1.0 // ?
-#define DEPTH_KD                 0.5 // ?
+#define DEPTH_KP                 2.0  // ?
+#define DEPTH_KI                 1.0  // ?
+#define DEPTH_KD                 0.5  // ?
 
-#define YAW_KP                   2   // ?
-#define YAW_KI                   1   // ?
-#define YAW_KD                   0.5 // ?
+#define YAW_KP                   2    // ?
+#define YAW_KI                   1    // ?
+#define YAW_KD                   0.5  // ?
+
+#define MOTOR1LOW                1452 // ?
+#define MOTOR1HIGH               1568 // ?
+#define MOTOR1RANGE              354  // ?
+
+#define MOTOR2LOW                1546 // ?
+#define MOTOR2HIGH               1660 // ?
+#define MOTOR2RANGE              384  // ?
+
+#define MOTOR3LOW                1590 // ?
+#define MOTOR3HIGH               1694 // ?
+#define MOTOR3RANGE              474  // ?
+
+#define MOTOR4LOW                1452 // ?
+#define MOTOR4HIGH               1568 // ?
+#define MOTOR4RANGE              354  // ?
+
+#define MOTOR5LOW                1452 // ?
+#define MOTOR5HIGH               1568 // ?
+#define MOTOR5RANGE              354  // ?
+
+#define MOTOR6LOW                1452 // ?
+#define MOTOR6HIGH               1568 // ?
+#define MOTOR6RANGE              354  // ?
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
@@ -64,8 +88,6 @@ char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
 
 float yaw = 0, pitch = 0, roll = 0;
 int depth = 0;
-  
-short min_speed = 0, max_speed = 400;
 
 signed char js_val[5];
 bool buttons[8];
@@ -73,7 +95,7 @@ bool buttons[8];
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 bool leak[8];
 
-char speedMode = 3;
+float speedK = 1;
 
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
@@ -100,8 +122,8 @@ void controlPeripherals() {
     pitchSetpoint = pitch; // Set target for AutoPitch
   } else {
     // Set vertical thrust
-    verticalMotorControl(verMotor1, js_val[2]);
-    verticalMotorControl(verMotor2, js_val[2]);
+    verticalMotorControl(verMotor1, js_val[2], MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
+    verticalMotorControl(verMotor2, js_val[2], MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
     
     // Set targets for AutoPitch & AutoDepth
     pitchSetpoint = pitch;
@@ -114,10 +136,10 @@ void controlPeripherals() {
     autoYaw();
   } else {
     // Set horizontal thrust
-    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3], MOTOR1LOW, MOTOR1HIGH, MOTOR1RANGE);
+    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3], MOTOR2LOW, MOTOR2HIGH, MOTOR2RANGE);
+    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3], MOTOR3LOW, MOTOR3HIGH, MOTOR3RANGE);
+    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3], MOTOR4LOW, MOTOR4HIGH, MOTOR4RANGE);
     
     // Set target for AutoYaw
     yawSetpoint = yaw;
@@ -190,8 +212,8 @@ void autoPitchAndDepth() {
     output2 = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) output1);
-  verticalMotorControl(verMotor2, (char) output2);
+  verticalMotorControl(verMotor1, (char) output1, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
+  verticalMotorControl(verMotor2, (char) output2, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
 }
 
 // AutoPitch mode
@@ -210,8 +232,8 @@ void autoPitch() {
     pitchOutput = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) pitchOutput);
-  verticalMotorControl(verMotor2, (char) -pitchOutput);
+  verticalMotorControl(verMotor1, (char) pitchOutput, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
+  verticalMotorControl(verMotor2, (char) -pitchOutput, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
 }
 
 // AutoDepth mode
@@ -230,18 +252,18 @@ void autoDepth() {
     depthOutput = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) depthOutput);
-  verticalMotorControl(verMotor2, (char) depthOutput);
+  verticalMotorControl(verMotor1, (char) depthOutput, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
+  verticalMotorControl(verMotor2, (char) depthOutput, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
 }
 
 // AutoYaw mode
 void autoYaw() {
   yawInput = rotationAngle(yaw, yawSetpoint);
   autoYawPID.Compute();
-  horizontalMotorControl(horMotor1, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor2, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor3, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor4, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor1, 0, 0, yawOutput, MOTOR1LOW, MOTOR1HIGH, MOTOR1RANGE);
+  horizontalMotorControl(horMotor2, 0, 0, yawOutput, MOTOR2LOW, MOTOR2HIGH, MOTOR2RANGE);
+  horizontalMotorControl(horMotor3, 0, 0, yawOutput, MOTOR3LOW, MOTOR3HIGH, MOTOR3RANGE);
+  horizontalMotorControl(horMotor4, 0, 0, yawOutput, MOTOR4LOW, MOTOR4HIGH, MOTOR4RANGE);
 }
 
 // Function for correct angles for PID
@@ -301,13 +323,13 @@ char receiveMessage() {
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
     if (bit1 == 1) {
-      speedMode = 1;
+      speedK = 1.0;
     }
     if (bit2 == 1) {
-      speedMode = 2;
+      speedK = 0.6;
     } 
     if (bit3 == 1) {
-      speedMode = 3;
+      speedK = 0.3;
     } 
     
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
@@ -349,25 +371,41 @@ void sendReply() {
 }
     
 // Function to control horizontal brushless motors
-void horizontalMotorControl(Servo motor, char x, char y, char z) {
+void horizontalMotorControl(Servo motor, char x, char y, char z, int motorLow, int motorHigh, int motorRange) {
   short POW = 0;
   float sum = x + y + z;
   if(sum > 100.0) sum = 100.0;
   if(sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
-  POW = short(sum * (float(max_speed - min_speed) / 100.0));
-  motor.writeMicroseconds(1460 + POW);
+  POW = short((sum * (motorRange / 100.0)) * speedK);
+  if (POW == 0) {
+    return;
+  }
+  if (POW < 0) {
+    motor.writeMicroseconds(motorLow + POW);
+  }
+  if (POW > 0) {
+    motor.writeMicroseconds(motorHigh + POW);
+  }
 }
 
 // Function to control vertical brushless motors
-void verticalMotorControl(Servo motor, short z) {
+void verticalMotorControl(Servo motor, short z, int motorLow, int motorHigh, int motorRange) {
   short POW = 0;
   float sum = z;
   if(sum > 100.0) sum = 100.0;
   if(sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
-  POW = short(sum * (float(max_speed - min_speed) / 100.0));
-  motor.writeMicroseconds(1460 + POW);
+  POW = short((sum * (motorRange / 100.0)) * speedK);
+  if (POW == 0) {
+    return;
+  }
+  if (POW < 0) {
+    motor.writeMicroseconds(motorLow + POW);
+  }
+  if (POW > 0) {
+    motor.writeMicroseconds(motorHigh + POW);
+  }
 }
 
 // Function to rotate manipulator
@@ -409,20 +447,21 @@ void tightenManipulator(char dir) {
 void setup() {
   // Init I2C connection for IMU
   Wire.begin();
-  
+
   // Init brushless motors
+  delay(1000);
   horMotor1.attach(MOTOR1PIN);
   horMotor2.attach(MOTOR2PIN);
   horMotor3.attach(MOTOR3PIN);
   horMotor4.attach(MOTOR4PIN);
   verMotor1.attach(MOTOR5PIN);
   verMotor2.attach(MOTOR6PIN);
-  horMotor1.write(90);
-  horMotor2.write(90);
-  horMotor3.write(90);
-  horMotor4.write(90);
-  verMotor1.write(90);
-  verMotor2.write(90);
+  horMotor1.write(1600);
+  horMotor2.write(1600);
+  horMotor3.write(1600);
+  horMotor4.write(1600);
+  verMotor1.write(1600);
+  verMotor2.write(1600);
   
   // Ethernet & Serial port init
   Ethernet.begin(mac,ip);
@@ -441,7 +480,7 @@ void setup() {
   autoYawPID.SetMode(AUTOMATIC);
   
   // Some delay for motors...
-  delay(1500);
+  delay(1000);
 }
 
 // Function for updating yaw, pitch, roll
