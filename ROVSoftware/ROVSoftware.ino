@@ -12,6 +12,9 @@
 #define MOTOR5PIN                11   // Some pin
 #define MOTOR6PIN                12   // Some pin
 
+#define MOTORLOWMICROSECONDS     1000
+#define MOTORHIGHMICROSECONDS    2000
+
 #define MAIN_MANIP_ROT_PINA      13   // Some pin
 #define MAIN_MANIP_ROT_PINB      14   // Some pin
 #define MAIN_MANIP_ROT_PINPWM    15   // Some pin
@@ -48,30 +51,6 @@
 #define YAW_KI                   1    // ?
 #define YAW_KD                   0.5  // ?
 
-#define MOTOR1LOW                1452 // ?
-#define MOTOR1HIGH               1568 // ?
-#define MOTOR1RANGE              354  // ?
-
-#define MOTOR2LOW                1546 // ?
-#define MOTOR2HIGH               1660 // ?
-#define MOTOR2RANGE              384  // ?
-
-#define MOTOR3LOW                1590 // ?
-#define MOTOR3HIGH               1694 // ?
-#define MOTOR3RANGE              474  // ?
-
-#define MOTOR4LOW                1452 // ?
-#define MOTOR4HIGH               1568 // ?
-#define MOTOR4RANGE              354  // ?
-
-#define MOTOR5LOW                1452 // ?
-#define MOTOR5HIGH               1568 // ?
-#define MOTOR5RANGE              354  // ?
-
-#define MOTOR6LOW                1452 // ?
-#define MOTOR6HIGH               1568 // ?
-#define MOTOR6RANGE              354  // ?
-
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
@@ -80,6 +59,8 @@ EthernetUDP Udp;
   
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
+
+int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
 Servo camera, bottomManip;
 int camera_angle = (MAX_CAMERA_ANGLE + MIN_CAMERA_ANGLE) / 2, bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
@@ -128,8 +109,8 @@ void controlPeripherals() {
     pitchSetpoint = pitch; // Set target for AutoPitch
   } else {
     // Set vertical thrust
-    verticalMotorControl(verMotor1, js_val[2], MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
-    verticalMotorControl(verMotor2, js_val[2], MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
+    verticalMotorControl(verMotor1, js_val[2]);
+    verticalMotorControl(verMotor2, js_val[2]);
     
     // Set targets for AutoPitch & AutoDepth
     pitchSetpoint = pitch;
@@ -142,10 +123,10 @@ void controlPeripherals() {
     autoYaw();
   } else {
     // Set horizontal thrust
-    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3], MOTOR1LOW, MOTOR1HIGH, MOTOR1RANGE);
-    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3], MOTOR2LOW, MOTOR2HIGH, MOTOR2RANGE);
-    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3], MOTOR3LOW, MOTOR3HIGH, MOTOR3RANGE);
-    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3], MOTOR4LOW, MOTOR4HIGH, MOTOR4RANGE);
+    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
     
     // Set target for AutoYaw
     yawSetpoint = yaw;
@@ -218,8 +199,8 @@ void autoPitchAndDepth() {
     output2 = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) output1, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
-  verticalMotorControl(verMotor2, (char) output2, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
+  verticalMotorControl(verMotor1, (char) output1);
+  verticalMotorControl(verMotor2, (char) output2);
 }
 
 // AutoPitch mode
@@ -238,8 +219,8 @@ void autoPitch() {
     pitchOutput = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) pitchOutput, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
-  verticalMotorControl(verMotor2, (char) -pitchOutput, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
+  verticalMotorControl(verMotor1, (char) pitchOutput);
+  verticalMotorControl(verMotor2, (char) -pitchOutput);
 }
 
 // AutoDepth mode
@@ -258,18 +239,18 @@ void autoDepth() {
     depthOutput = -100.0;
   }
   
-  verticalMotorControl(verMotor1, (char) depthOutput, MOTOR5LOW, MOTOR5HIGH, MOTOR5RANGE);
-  verticalMotorControl(verMotor2, (char) depthOutput, MOTOR6LOW, MOTOR6HIGH, MOTOR6RANGE);
+  verticalMotorControl(verMotor1, (char) depthOutput);
+  verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
 // AutoYaw mode
 void autoYaw() {
   yawInput = rotationAngle(yaw, yawSetpoint);
   autoYawPID.Compute();
-  horizontalMotorControl(horMotor1, 0, 0, yawOutput, MOTOR1LOW, MOTOR1HIGH, MOTOR1RANGE);
-  horizontalMotorControl(horMotor2, 0, 0, yawOutput, MOTOR2LOW, MOTOR2HIGH, MOTOR2RANGE);
-  horizontalMotorControl(horMotor3, 0, 0, yawOutput, MOTOR3LOW, MOTOR3HIGH, MOTOR3RANGE);
-  horizontalMotorControl(horMotor4, 0, 0, yawOutput, MOTOR4LOW, MOTOR4HIGH, MOTOR4RANGE);
+  horizontalMotorControl(horMotor1, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor2, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor3, 0, 0, yawOutput);
+  horizontalMotorControl(horMotor4, 0, 0, yawOutput);
 }
 
 // Function for correct angles for PID
@@ -377,40 +358,34 @@ void sendReply() {
 }
     
 // Function to control horizontal brushless motors
-void horizontalMotorControl(Servo motor, char x, char y, char z, int motorLow, int motorHigh, int motorRange) {
+void horizontalMotorControl(Servo motor, short x, short y, short z) {
   short POW = 0;
-  float sum = x + y + z;
+  int sum = x + y + z;
   if(sum > 100.0) sum = 100.0;
   if(sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
+  int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
   POW = short((sum * (motorRange / 100.0)) * speedK);
   if (POW == 0) {
     return;
-  }
-  if (POW < 0) {
-    motor.writeMicroseconds(motorLow + POW);
-  }
-  if (POW > 0) {
-    motor.writeMicroseconds(motorHigh + POW);
+  } else {
+    motor.writeMicroseconds(MOTORMIDMICROSECONDS + POW);
   }
 }
 
 // Function to control vertical brushless motors
-void verticalMotorControl(Servo motor, short z, int motorLow, int motorHigh, int motorRange) {
+void verticalMotorControl(Servo motor, short z) {
   short POW = 0;
-  float sum = z;
+  short sum = z;
   if(sum > 100.0) sum = 100.0;
   if(sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
+  int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
   POW = short((sum * (motorRange / 100.0)) * speedK);
   if (POW == 0) {
     return;
-  }
-  if (POW < 0) {
-    motor.writeMicroseconds(motorLow + POW);
-  }
-  if (POW > 0) {
-    motor.writeMicroseconds(motorHigh + POW);
+  } else {
+    motor.writeMicroseconds(MOTORMIDMICROSECONDS + POW);
   }
 }
 
@@ -462,12 +437,12 @@ void setup() {
   horMotor4.attach(MOTOR4PIN);
   verMotor1.attach(MOTOR5PIN);
   verMotor2.attach(MOTOR6PIN);
-  horMotor1.write(1600);
-  horMotor2.write(1600);
-  horMotor3.write(1600);
-  horMotor4.write(1600);
-  verMotor1.write(1600);
-  verMotor2.write(1600);
+  horMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
+  horMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
+  horMotor3.writeMicroseconds(MOTORMIDMICROSECONDS);
+  horMotor4.writeMicroseconds(MOTORMIDMICROSECONDS);
+  verMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
+  verMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
   
   // Ethernet & Serial port init
   Ethernet.begin(mac,ip);
