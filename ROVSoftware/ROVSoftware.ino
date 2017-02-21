@@ -56,7 +56,7 @@ IPAddress ip(192, 168, 1, 242), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
 unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
-  
+
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
 
@@ -111,12 +111,12 @@ void controlPeripherals() {
     // Set vertical thrust
     verticalMotorControl(verMotor1, js_val[2]);
     verticalMotorControl(verMotor2, js_val[2]);
-    
+
     // Set targets for AutoPitch & AutoDepth
     pitchSetpoint = pitch;
     depthSetpoint = depth;
   }
-  
+
   // AutoYaw mode:
   if (isAutoYaw) {
     Serial.println("Using AutoYaw mode");
@@ -127,13 +127,13 @@ void controlPeripherals() {
     horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3]);
     horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3]);
     horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
-    
+
     // Set target for AutoYaw
     yawSetpoint = yaw;
   }
 
   tightenManipulator(manTightDir);
-  
+
   unsigned long long current_time = millis();
   if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (servoCamDir > 0) {
@@ -163,7 +163,7 @@ void controlPeripherals() {
   }
   bottomManip.write(bottom_manip_angle);
   prev_manip_servo_update = millis();
-  
+
   rotateManipulator(js_val[4]);
 }
 
@@ -173,10 +173,10 @@ void autoPitchAndDepth() {
   if (depth == 0.0) {
     return;
   }
-  
+
   depthInput = depth;
   pitchInput = rotationAngle(pitch, pitchSetpoint);
-  
+
   autoPitchPID.Compute();
   autoDepthPID.Compute();
 
@@ -198,7 +198,7 @@ void autoPitchAndDepth() {
   if (output2 < -100.0) {
     output2 = -100.0;
   }
-  
+
   verticalMotorControl(verMotor1, (char) output1);
   verticalMotorControl(verMotor2, (char) output2);
 }
@@ -210,7 +210,7 @@ void autoPitch() {
   Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
   Serial.print("Current pitch is: ");        Serial.println(pitch);
-  
+
   // Value correction:
   if (pitchOutput > 100.0) {
     pitchOutput = 100.0;
@@ -218,9 +218,9 @@ void autoPitch() {
   if (pitchOutput < -100.0) {
     pitchOutput = -100.0;
   }
-  
+
   verticalMotorControl(verMotor1, (char) pitchOutput);
-  verticalMotorControl(verMotor2, (char) -pitchOutput);
+  verticalMotorControl(verMotor2, (char) - pitchOutput);
 }
 
 // AutoDepth mode
@@ -238,7 +238,7 @@ void autoDepth() {
   if (depthOutput < -100.0) {
     depthOutput = -100.0;
   }
-  
+
   verticalMotorControl(verMotor1, (char) depthOutput);
   verticalMotorControl(verMotor2, (char) depthOutput);
 }
@@ -272,7 +272,7 @@ char receiveMessage() {
     Serial.print("Received packet of size: ");
     Serial.print(packetSize);
   }
-  if(packetSize == INCOMING_PACKET_SIZE) {
+  if (packetSize == INCOMING_PACKET_SIZE) {
     Serial.println(". Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
@@ -281,7 +281,7 @@ char receiveMessage() {
     for (int i = 0; i < 8; ++i) {
       buttons[i] = (packetBuffer[5] >> i) & 1;
     }
-    
+
     if (buttons[0] == 1 && buttons[1] == 0) {
       servoCamDir = -1;
     } else if (buttons[0] == 0 && buttons[1] == 1) {
@@ -314,11 +314,11 @@ char receiveMessage() {
     }
     if (bit2 == 1) {
       speedK = 0.6;
-    } 
+    }
     if (bit3 == 1) {
       speedK = 0.3;
-    } 
-    
+    }
+
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
     isAutoPitch = (packetBuffer[6] >> 4) & 1;
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
@@ -333,7 +333,7 @@ char receiveMessage() {
 // Forming & sending packet to PC via UDP
 void sendReply() {
   Serial.print("PC is on :"); Serial.println(remote_device);
-  
+
   Serial.println("Forming packet...");
   replyBuffer[0] = ((int) (yaw * 100.0) >> 8) & 0xFF;
   replyBuffer[1] = ((int) (yaw * 100.0)) & 0xFF;
@@ -347,7 +347,7 @@ void sendReply() {
     replyBuffer[8] |= leak[i] << i;
   }
   //replyBuffer[9] = ...
-    
+
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
   Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
@@ -356,13 +356,13 @@ void sendReply() {
   Serial.println("Endpacket...");
   return;
 }
-    
+
 // Function to control horizontal brushless motors
 void horizontalMotorControl(Servo motor, short x, short y, short z) {
   short POW = 0;
   int sum = x + y + z;
-  if(sum > 100.0) sum = 100.0;
-  if(sum < (-100.0)) sum = -100.0;
+  if (sum > 100.0) sum = 100.0;
+  if (sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
   int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
   POW = short((sum * (motorRange / 100.0)) * speedK);
@@ -377,8 +377,8 @@ void horizontalMotorControl(Servo motor, short x, short y, short z) {
 void verticalMotorControl(Servo motor, short z) {
   short POW = 0;
   short sum = z;
-  if(sum > 100.0) sum = 100.0;
-  if(sum < (-100.0)) sum = -100.0;
+  if (sum > 100.0) sum = 100.0;
+  if (sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
   int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
   POW = short((sum * (motorRange / 100.0)) * speedK);
@@ -391,15 +391,15 @@ void verticalMotorControl(Servo motor, short z) {
 
 // Function to rotate manipulator
 void rotateManipulator(short m) {
-  if (m > 0){
+  if (m > 0) {
     digitalWrite(MAIN_MANIP_ROT_PINA, HIGH);
     digitalWrite(MAIN_MANIP_ROT_PINB, LOW);
   }
-  if (m < 0){
+  if (m < 0) {
     digitalWrite(MAIN_MANIP_ROT_PINA, LOW);
     digitalWrite(MAIN_MANIP_ROT_PINB, HIGH);
   }
-  if (m == 0){
+  if (m == 0) {
     digitalWrite(MAIN_MANIP_ROT_PINA, LOW);
     digitalWrite(MAIN_MANIP_ROT_PINB, LOW);
   }
@@ -410,15 +410,15 @@ void rotateManipulator(short m) {
 
 // Function to tight manipulator
 void tightenManipulator(char dir) {
-  if (dir > 0){
+  if (dir > 0) {
     digitalWrite(MAIN_MANIP_TIGHT_PINA, HIGH);
     digitalWrite(MAIN_MANIP_TIGHT_PINB, LOW);
   }
-  if (dir < 0){
+  if (dir < 0) {
     digitalWrite(MAIN_MANIP_TIGHT_PINA, LOW);
     digitalWrite(MAIN_MANIP_TIGHT_PINB, HIGH);
   }
-  if (dir == 0){
+  if (dir == 0) {
     digitalWrite(MAIN_MANIP_TIGHT_PINA, LOW);
     digitalWrite(MAIN_MANIP_TIGHT_PINB, LOW);
   }
@@ -443,28 +443,28 @@ void setup() {
   horMotor4.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
-  
+
   // Ethernet & Serial port init
-  Ethernet.begin(mac,ip);
+  Ethernet.begin(mac, ip);
   Udp.begin(8000);
   Serial.begin(250000);
-  
+
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
   camera.write(camera_angle);
   bottomManip.attach(SERVO_MANIPULATOR_PIN);
   bottomManip.write(bottom_manip_angle);
-  
+
   // Init PID settings
   autoPitchPID.SetMode(AUTOMATIC);
   autoDepthPID.SetMode(AUTOMATIC);
   autoYawPID.SetMode(AUTOMATIC);
-  
+
   // Some delay for motors...
   delay(1000);
   // Retrieve calibration constants for conversion math.
   sensor.reset();
-  sensor.begin();  
+  sensor.begin();
   pressure_baseline = sensor.getPressure(ADC_4096);
 }
 
@@ -475,18 +475,36 @@ void updateYPR() {
 
 // Function for updating depth
 void updateDepth() {
-  // Read pressure from the sensor in mbar.
-  pressure_abs = sensor.getPressure(ADC_4096);
+  // Read pressure from the sensor in mbar & filter it
+  int pressureReadings[10];
+  for (int i = 0; i < 10; i++) { 
+    pressureReadings[i] = sensor.getPressure(ADC_4096);
+  }
+  sort(pressureReadings, sizeof(pressureReadings)); 
+
+  pressure_abs = pressureReadings[4]; 
 
   // Taking our baseline pressure at the beginning we can find an approximate
-  // change in altitude based on the differences in pressure.   
+  // change in altitude based on the differences in pressure.
   depth = altitude(pressure_abs , pressure_baseline);
+}
+
+void sort(int a[], int size) {
+  for (int i = 0; i < (size - 1); i++) {
+    for (int o = 0; o < (size - (i + 1)); o++) {
+      if (a[o] > a[o + 1]) {
+        int t = a[o];
+        a[o] = a[o + 1];
+        a[o + 1] = t;
+      }
+    }
+  }
 }
 
 // Given a pressure measurement P (mbar) and the pressure at a baseline P0 (mbar),
 // return altitude (meters) above baseline.
 double altitude(double P, double P0) {
-  return(44330.0*(1-pow(P/P0,1/5.255)));
+  return (44330.0 * (1 - pow(P / P0, 1 / 5.255)));
 }
 
 void loop() {
