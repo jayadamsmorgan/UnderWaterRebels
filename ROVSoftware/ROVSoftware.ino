@@ -4,6 +4,8 @@
 #include <Servo.h>
 #include <PID_v1.h>
 #include <SparkFun_MS5803_I2C.h>
+#include <ADXL345.h>
+#include <HMC5883L.h>
 
 #define MOTOR1PIN                5    // Some pin
 #define MOTOR2PIN                6    // Some pin
@@ -56,6 +58,9 @@ IPAddress ip(192, 168, 1, 242), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
 unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
+
+ADXL345 accelerometer;
+HMC5883L compass;
 
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
@@ -468,21 +473,16 @@ void setup() {
   pressure_baseline = sensor.getPressure(ADC_4096);
 }
 
-// Function for updating yaw, pitch, roll
-void updateYPR() {
-  // TODO yaw, pitch, roll update
-}
-
 // Function for updating depth
 void updateDepth() {
   // Read pressure from the sensor in mbar & filter it
   int pressureReadings[10];
-  for (int i = 0; i < 10; i++) { 
+  for (int i = 0; i < 10; i++) {
     pressureReadings[i] = sensor.getPressure(ADC_4096);
   }
-  sort(pressureReadings, sizeof(pressureReadings)); 
+  sort(pressureReadings, sizeof(pressureReadings));
 
-  pressure_abs = pressureReadings[4]; 
+  pressure_abs = pressureReadings[4];
 
   // Taking our baseline pressure at the beginning we can find an approximate
   // change in altitude based on the differences in pressure.
@@ -505,6 +505,51 @@ void sort(int a[], int size) {
 // return altitude (meters) above baseline.
 double altitude(double P, double P0) {
   return (44330.0 * (1 - pow(P / P0, 1 / 5.255)));
+}
+
+// Function for updating yaw, pitch, roll
+void updateYPR() {
+  int mag_XAxis_read[10];
+  int mag_YAxis_read[10];
+  int accl_XAxis_read[10];
+  int accl_YAxis_read[10];
+  int accl_ZAxis_read[10];
+
+  for (int i = 0; i < 10; i++) {
+    Vector accl = accelerometer.readNormalize();
+    accl_XAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).XAxis;
+    accl_YAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).YAxis;
+    accl_ZAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).ZAxis;
+    mag_XAxis_read[i] = compass.readNormalize().XAxis;
+    mag_YAxis_read[i] = compass.readNormalize().YAxis;
+  }
+  sort(mag_XAxis_read, sizeof(mag_XAxis_read));
+  sort(mag_YAxis_read, sizeof(mag_YAxis_read));
+  sort(accl_XAxis_read, sizeof(accl_XAxis_read));
+  sort(accl_YAxis_read, sizeof(accl_YAxis_read));
+  sort(accl_ZAxis_read, sizeof(accl_ZAxis_read));
+
+  float accl_filter_XAxis  = accl_XAxis_read[4];
+  float accl_filter_YAxis  = accl_YAxis_read[4];
+  float accl_filter_ZAxis  = accl_ZAxis_read[4];
+  float mag_filter_XAxis  = mag_XAxis_read[4];
+  float mag_filter_YAxis  = mag_YAxis_read[4];
+
+  pitch = -(atan2(accl_filter_XAxis, sqrt(accl_filter_YAxis  * accl_filter_YAxis + accl_filter_ZAxis * accl_filter_ZAxis)) * 180.0) / M_PI;
+  roll = (atan2(accl_filter_YAxis, accl_filter_ZAxis) * 180.0) / M_PI;
+  yaw = atan2(mag_filter_YAxis, mag_filter_XAxis);
+
+  float declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
+  yaw += declinationAngle;
+
+  if (yaw < 0) {
+    yaw += 2 * PI;
+  }
+  if (yaw > 2 * PI) {
+    yaw -= 2 * PI;
+  }
+
+  yaw = yaw * 180 / M_PI;
 }
 
 void loop() {
