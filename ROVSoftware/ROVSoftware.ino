@@ -14,8 +14,9 @@
 #define MOTOR5PIN                11   // Some pin
 #define MOTOR6PIN                12   // Some pin
 
-#define MOTORLOWMICROSECONDS     1000
-#define MOTORHIGHMICROSECONDS    2000
+#define MOTORLOWMICROSECONDS     1466
+#define MOTORHIGHMICROSECONDS    1510
+#define MOTORRANGE               228
 
 #define MAIN_MANIP_ROT_PINA      13   // Some pin
 #define MAIN_MANIP_ROT_PINB      14   // Some pin
@@ -49,9 +50,11 @@
 #define DEPTH_KI                 1.0  // ?
 #define DEPTH_KD                 0.5  // ?
 
-#define YAW_KP                   2    // ?
-#define YAW_KI                   1    // ?
+#define YAW_KP                   2.0  // ?
+#define YAW_KI                   1.0  // ?
 #define YAW_KD                   0.5  // ?
+
+int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 242), remote_device;
@@ -61,11 +64,10 @@ EthernetUDP Udp;
 
 ADXL345 accelerometer;
 HMC5883L compass;
+MS5803 sensor(ADDRESS_LOW);
 
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
-
-int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
 Servo camera, bottomManip;
 int camera_angle = (MAX_CAMERA_ANGLE + MIN_CAMERA_ANGLE) / 2, bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
@@ -75,8 +77,6 @@ char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
 
 float yaw = 0, pitch = 0, roll = 0;
 int depth = 0;
-
-MS5803 sensor(ADDRESS_LOW);
 
 // Create variables to store results for depth calculations
 double pressure_abs, pressure_baseline;
@@ -369,12 +369,15 @@ void horizontalMotorControl(Servo motor, short x, short y, short z) {
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
-  int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
-  POW = short((sum * (motorRange / 100.0)) * speedK);
+  POW = short((sum * (MOTORRANGE / 100.0)) * speedK);
   if (POW == 0) {
-    return;
-  } else {
-    motor.writeMicroseconds(MOTORMIDMICROSECONDS + POW);
+    motor.writeMicroseconds(MOTORMIDMICROSECONDS);
+  }
+  if (POW < 0) {
+    motor.writeMicroseconds(MOTORLOWMICROSECONDS + POW);
+  }
+  if (POW > 0) {
+    motor.writeMicroseconds(MOTORHIGHMICROSECONDS + POW);
   }
 }
 
@@ -385,12 +388,15 @@ void verticalMotorControl(Servo motor, short z) {
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
-  int motorRange = MOTORHIGHMICROSECONDS - MOTORLOWMICROSECONDS;
-  POW = short((sum * (motorRange / 100.0)) * speedK);
+  POW = short((sum * (MOTORRANGE / 100.0)) * speedK);
   if (POW == 0) {
-    return;
-  } else {
-    motor.writeMicroseconds(MOTORMIDMICROSECONDS + POW);
+    motor.writeMicroseconds(MOTORMIDMICROSECONDS);
+  }
+  if (POW < 0) {
+    motor.writeMicroseconds(MOTORLOWMICROSECONDS + POW);
+  }
+  if (POW > 0) {
+    motor.writeMicroseconds(MOTORHIGHMICROSECONDS + POW);
   }
 }
 
@@ -435,19 +441,20 @@ void setup() {
   Wire.begin();
 
   // Init brushless motors
-  delay(1000);
   horMotor1.attach(MOTOR1PIN);
   horMotor2.attach(MOTOR2PIN);
   horMotor3.attach(MOTOR3PIN);
   horMotor4.attach(MOTOR4PIN);
   verMotor1.attach(MOTOR5PIN);
   verMotor2.attach(MOTOR6PIN);
+  delay(3000);
   horMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor3.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor4.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
+  delay(5000);
 
   // Ethernet & Serial port init
   Ethernet.begin(mac, ip);
