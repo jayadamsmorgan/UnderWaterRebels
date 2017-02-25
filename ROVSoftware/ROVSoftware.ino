@@ -487,25 +487,21 @@ void updateDepth() {
   for (int i = 0; i < 10; i++) {
     pressureReadings[i] = sensor.getPressure(ADC_4096);
   }
-  sort(pressureReadings, sizeof(pressureReadings));
+  for (int i = 0; i < (10 - 1); i++) {
+    for (int o = 0; o < (10 - (i + 1)); o++) {
+      if (pressureReadings[o] > pressureReadings[o + 1]) {
+        int t = pressureReadings[o];
+        pressureReadings[o] = pressureReadings[o + 1];
+        pressureReadings[o + 1] = t;
+      }
+    }
+  }
 
   pressure_abs = pressureReadings[4];
 
   // Taking our baseline pressure at the beginning we can find an approximate
   // change in altitude based on the differences in pressure.
   depth = altitude(pressure_abs , pressure_baseline);
-}
-
-void sort(int a[], int size) {
-  for (int i = 0; i < (size - 1); i++) {
-    for (int o = 0; o < (size - (i + 1)); o++) {
-      if (a[o] > a[o + 1]) {
-        int t = a[o];
-        a[o] = a[o + 1];
-        a[o + 1] = t;
-      }
-    }
-  }
 }
 
 // Given a pressure measurement P (mbar) and the pressure at a baseline P0 (mbar),
@@ -516,35 +512,42 @@ double altitude(double P, double P0) {
 
 // Function for updating yaw, pitch, roll
 void updateYPR() {
-  int mag_XAxis_read[10];
-  int mag_YAxis_read[10];
-  int accl_XAxis_read[10];
-  int accl_YAxis_read[10];
-  int accl_ZAxis_read[10];
+  Vector mag = compass.readNormalize();
 
+  yaw = atan2(mag.YAxis, mag.XAxis);
+
+
+  float fpitcharray[10];
+  float frollarray[10];
   for (int i = 0; i < 10; i++) {
     Vector accl = accelerometer.readNormalize();
-    accl_XAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).XAxis;
-    accl_YAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).YAxis;
-    accl_ZAxis_read[i] = accelerometer.lowPassFilter(accl, 0.9).ZAxis;
-    mag_XAxis_read[i] = compass.readNormalize().XAxis;
-    mag_YAxis_read[i] = compass.readNormalize().YAxis;
+    Vector faccl = accelerometer.lowPassFilter(accl, 0.5);
+    fpitcharray[i] = -(atan2(faccl.XAxis, sqrt(faccl.YAxis  * faccl.YAxis + faccl.ZAxis * faccl.ZAxis)) * 180.0) / M_PI;
+    frollarray[i] = (atan2(faccl.YAxis, faccl.ZAxis) * 180.0) / M_PI;
   }
-  sort(mag_XAxis_read, sizeof(mag_XAxis_read));
-  sort(mag_YAxis_read, sizeof(mag_YAxis_read));
-  sort(accl_XAxis_read, sizeof(accl_XAxis_read));
-  sort(accl_YAxis_read, sizeof(accl_YAxis_read));
-  sort(accl_ZAxis_read, sizeof(accl_ZAxis_read));
 
-  float accl_filter_XAxis  = accl_XAxis_read[4];
-  float accl_filter_YAxis  = accl_YAxis_read[4];
-  float accl_filter_ZAxis  = accl_ZAxis_read[4];
-  float mag_filter_XAxis  = mag_XAxis_read[4];
-  float mag_filter_YAxis  = mag_YAxis_read[4];
 
-  pitch = -(atan2(accl_filter_XAxis, sqrt(accl_filter_YAxis  * accl_filter_YAxis + accl_filter_ZAxis * accl_filter_ZAxis)) * 180.0) / M_PI;
-  roll = (atan2(accl_filter_YAxis, accl_filter_ZAxis) * 180.0) / M_PI;
-  yaw = atan2(mag_filter_YAxis, mag_filter_XAxis);
+  for (int i = 0; i < (10 - 1); i++) {
+    for (int o = 0; o < (10 - (i + 1)); o++) {
+      if (fpitcharray[o] > fpitcharray[o + 1]) {
+        int t = fpitcharray[o];
+        fpitcharray[o] = fpitcharray[o + 1];
+        fpitcharray[o + 1] = t;
+      }
+    }
+  }
+  for (int i = 0; i < (10 - 1); i++) {
+    for (int o = 0; o < (10 - (i + 1)); o++) {
+      if (frollarray[o] > frollarray[o + 1]) {
+        int t = frollarray[o];
+        frollarray[o] = frollarray[o + 1];
+        frollarray[o + 1] = t;
+      }
+    }
+  }
+
+  pitch = fpitcharray[4];
+  roll = frollarray[4];
 
   float declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
   yaw += declinationAngle;
