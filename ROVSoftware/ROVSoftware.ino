@@ -14,9 +14,9 @@
 #define MOTOR5PIN                11   // Some pin
 #define MOTOR6PIN                12   // Some pin
 
-#define MOTORLOWMICROSECONDS     1466
+#define MOTORLOWMICROSECONDS     1465
 #define MOTORHIGHMICROSECONDS    1510
-#define MOTORRANGE               228
+#define MOTORRANGE               400
 
 #define MAIN_MANIP_ROT_PINA      13   // Some pin
 #define MAIN_MANIP_ROT_PINB      14   // Some pin
