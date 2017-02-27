@@ -1,5 +1,12 @@
 #include <Wire.h>
 #include <OneWire.h>
+#include <LiquidCrystal_I2C.h>
+
+#if defined(ARDUINO) && ARDUINO >= 100
+#define printByte(args)  write(args);
+#else
+#define printByte(args)  print(args,BYTE);
+#endif
 
 #define pinA          A0
 #define pinV          A1
@@ -12,8 +19,14 @@
 #define k 5.0 // Real Voltage between GND & 5V on arduino
 
 OneWire ds(2);
+LiquidCrystal_I2C lcd(0x3F, 20, 4);
+
+long long prev_time_alarm;
+long long prev_time_update;
+boolean isBacklight;
 
 void setup() {
+  
   Serial.begin(115200);
 
   // Pins init
@@ -21,17 +34,128 @@ void setup() {
   pinMode(pinV, INPUT);
   pinMode(pinPWM_IN, INPUT);
   pinMode(pinPWM_OUT, OUTPUT);
+
+  // Display init
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(10, 3);
+  lcd.print("LOADING...");
+  delay(2000);
+
+  lcd.clear();
+  lcd.noBacklight();
+
+  lcd.setCursor(8, 0);
+  lcd.print("CURRENT:");
+  lcd.setCursor(19, 0);
+  lcd.print("A");
+
+  lcd.setCursor(8, 1);
+  lcd.print("VOLTAGE:");
+  lcd.setCursor(19, 1);
+  lcd.print("V");
+
+  lcd.setCursor(0, 2);
+  lcd.print("RPM:");
+  lcd.setCursor(9, 2);
+  lcd.print("RPM");
+
+  lcd.setCursor(0, 3);
+  lcd.print("TEMPERATURE:");
+  lcd.setCursor(15, 3);
+  lcd.printByte(223);
+  lcd.setCursor(16, 3);
+  lcd.print("C");
+}
+
+void alarm() {
+  
+  if (millis() - prev_time_alarm > 300) {
+    if (isBacklight) {
+      lcd.noBacklight();
+      isBacklight = false;
+    } else {
+      lcd.backlight();
+      isBacklight = true;
+    }
+    prev_time_alarm = millis();
+  }
+}
+
+void updateValues(int current, int voltage, int rpm, int temperature) {
+  
+  lcd.setCursor(16, 0);
+  if (current < 10) {
+    lcd.print("  ");
+    lcd.setCursor(18, 0);
+  } else if (current < 100) {
+    lcd.print(" ");
+    lcd.setCursor(17, 0);
+  }
+  lcd.print(current);
+
+  lcd.setCursor(16, 1);
+  if (voltage < 10) {
+    lcd.print("  ");
+    lcd.setCursor(18, 1);
+  } else if (voltage < 100) {
+    lcd.print(" ");
+    lcd.setCursor(17, 1);
+  }
+  lcd.print(voltage);
+
+  lcd.setCursor(4, 2);
+  if (rpm < 10) {
+    lcd.print("    ");
+    lcd.setCursor(8, 2);
+  } else if (rpm < 100) {
+    lcd.print("   ");
+    lcd.setCursor(7, 2);
+  } else if (rpm < 1000) {
+    lcd.print("  ");
+    lcd.setCursor(6, 2);
+  } else if (rpm < 10000) {
+    lcd.print(" ");
+    lcd.setCursor(5, 2);
+  }
+  lcd.print(rpm);
+
+  lcd.setCursor(12, 3);
+  if (temperature < 10) {
+    lcd.print("  ");
+    lcd.setCursor(14, 3);
+  } else if (temperature < 100) {
+    lcd.print(" ");
+    lcd.setCursor(13, 3);
+  } else {
+    lcd.setCursor(12, 3);
+  }
+  lcd.print(temperature);
+
 }
 
 void loop() {
+
   // Read data from sensors & print data
   int current = analogRead(pinA);
   int voltage = getVoltage();
   int temp = (int) getCelcius();
   int rpm = analogRead(pinPWM_IN);
-  int buf[] = { current, voltage, temp, rpm };
-  Serial.write(buf, 4);
-  
+  uint8_t buf[] = { current, voltage, temp };
+
+  if (current > 20 || voltage > 13 || temp > 45) {
+    alarm();
+  } else {
+    lcd.noBacklight();
+  }
+
+  if (millis() - prev_time_update > 500) {
+    updateValues(current, voltage, rpm, temp);
+    prev_time_update = millis();
+  }
+
+  Serial.write(buf, 3);
+
   // Write value based on the PSU temperature to the fans
   float value = temp / 60 * 255;
   if (value > 255) {
@@ -45,11 +169,10 @@ void loop() {
 
 float getVoltage() {
   // Get Voltage via voltage divider
-  return (analogRead(pinV) * k / 1024.0) / (R2/(R1+R2));
+  return (analogRead(pinV) * k / 1024.0) / (R2 / (R1 + R2));
 }
 
 float getCelcius() {
-  Serial.println("Temperature sensor information:");
   byte i;
   byte present = 0;
   byte type_s;
@@ -57,70 +180,53 @@ float getCelcius() {
   byte addr[8];
   float celsius;
   if ( !ds.search(addr)) {
-    Serial.println("No more addresses.");
-    Serial.println();
+    // No more addresses.
     ds.reset_search();
-    delay(250);
     return 0;
-  }
-  Serial.print("ROM =");
-  for( i = 0; i < 8; i++) {
-    Serial.write(' ');
-    Serial.print(addr[i], HEX);
   }
   if (OneWire::crc8(addr, 7) != addr[7]) {
-    Serial.println("CRC is not valid!");
+    // CRC is not valid!
     return 0;
   }
-  Serial.println();
   switch (addr[0]) {
     case 0x10:
-      Serial.println(" Chip = DS18S20"); 
+      // Chip = DS18S20"
       type_s = 1;
       break;
     case 0x28:
-      Serial.println(" Chip = DS18B20");
+      // Chip = DS18B20
       type_s = 0;
       break;
     case 0x22:
-      Serial.println(" Chip = DS1822");
+      // Chip = DS1822
       type_s = 0;
       break;
     default:
-      Serial.println("Device is not a DS18x20 family device.");
+      // Device is not a DS18x20 family device.
       return 0;
   }
   ds.reset();
   ds.select(addr);
-  ds.write(0x44); 
-  delay(1000); 
+  ds.write(0x44);
   present = ds.reset();
   ds.select(addr);
   ds.write(0xBE);
-  Serial.print(" Data = ");
-  Serial.print(present, HEX);
-  Serial.print(" ");
   for ( i = 0; i < 9; i++) {
     data[i] = ds.read();
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
   }
-  Serial.print(" CRC=");
-  Serial.print(OneWire::crc8(data, 8), HEX);
-  Serial.println();
+  OneWire::crc8(data, 8);
   int16_t raw = (data[1] << 8) | data[0];
   if (type_s) {
-    raw = raw << 3; 
+    raw = raw << 3;
     if (data[7] == 0x10) {
       raw = (raw & 0xFFF0) + 12 - data[6];
     }
   } else {
     byte cfg = (data[4] & 0x60);
-      if (cfg == 0x00) raw = raw & ~7; 
-      else if (cfg == 0x20) raw = raw & ~3; 
-      else if (cfg == 0x40) raw = raw & ~1; 
+    if (cfg == 0x00) raw = raw & ~7;
+    else if (cfg == 0x20) raw = raw & ~3;
+    else if (cfg == 0x40) raw = raw & ~1;
   }
   celsius = (float)raw / 16.0;
   return celsius;
-  Serial.println("End of temperature sensor information");
 }
