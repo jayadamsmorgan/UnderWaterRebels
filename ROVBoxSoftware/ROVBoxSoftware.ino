@@ -2,31 +2,33 @@
 #include <OneWire.h>
 #include <LiquidCrystal_I2C.h>
 
+// Writing bytes to the lcd on different arduinos
 #if defined(ARDUINO) && ARDUINO >= 100
 #define printByte(args)  write(args);
 #else
 #define printByte(args)  print(args,BYTE);
 #endif
 
-#define pinA          A0
-#define pinV          A1
-#define pinPWM_IN     A2
-#define pinPWM_OUT     3
+#define pinA          A0 // Ammeter pin
+#define pinV          A1 // Voltmeter voltage divider pin
+#define pinPWM_IN     A2 // Fan's pwm reading rpm pin
+#define pinPWM_OUT     3 // Fan's pwm writing rpm pin
+#define pinTemp        2 // Temperature sensor pin
 
-#define R1 100000 // Real Resistance on first resistor on voltage divider
-#define R2 10000  // Real Resistance on second resistor on voltage divider
+#define R1 100000 // Real resistance on first resistor in voltage divider
+#define R2 10000  // Real resistance on second resistor in voltage divider
 
 #define k 5.0 // Real Voltage between GND & 5V on arduino
 
-OneWire ds(2);
-LiquidCrystal_I2C lcd(0x3F, 20, 4);
+OneWire ds(pinTemp); // One-Wire BS18B20 temperature
+LiquidCrystal_I2C lcd(0x3F, 20, 4); // I2C 2004 LCD
 
 long long prev_time_alarm;
 long long prev_time_update;
 boolean isBacklight;
 
 void setup() {
-  
+  // Serial init
   Serial.begin(115200);
 
   // Pins init
@@ -41,25 +43,20 @@ void setup() {
   lcd.setCursor(10, 3);
   lcd.print("LOADING...");
   delay(2000);
-
   lcd.clear();
   lcd.noBacklight();
-
   lcd.setCursor(8, 0);
   lcd.print("CURRENT:");
   lcd.setCursor(19, 0);
   lcd.print("A");
-
   lcd.setCursor(8, 1);
   lcd.print("VOLTAGE:");
   lcd.setCursor(19, 1);
   lcd.print("V");
-
   lcd.setCursor(0, 2);
   lcd.print("RPM:");
   lcd.setCursor(9, 2);
   lcd.print("RPM");
-
   lcd.setCursor(0, 3);
   lcd.print("TEMPERATURE:");
   lcd.setCursor(15, 3);
@@ -69,7 +66,7 @@ void setup() {
 }
 
 void alarm() {
-  
+  // Turning off/on one time in 300ms
   if (millis() - prev_time_alarm > 300) {
     if (isBacklight) {
       lcd.noBacklight();
@@ -83,7 +80,7 @@ void alarm() {
 }
 
 void updateValues(int current, int voltage, int rpm, int temperature) {
-  
+  // Printing current based on length
   lcd.setCursor(16, 0);
   if (current < 10) {
     lcd.print("  ");
@@ -94,6 +91,7 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
   }
   lcd.print(current);
 
+  // Printing voltage based on length
   lcd.setCursor(16, 1);
   if (voltage < 10) {
     lcd.print("  ");
@@ -104,6 +102,7 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
   }
   lcd.print(voltage);
 
+  // Printing RPM based 
   lcd.setCursor(4, 2);
   if (rpm < 10) {
     lcd.print("    ");
@@ -120,6 +119,7 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
   }
   lcd.print(rpm);
 
+  // Printing temperature based on length
   lcd.setCursor(12, 3);
   if (temperature < 10) {
     lcd.print("  ");
@@ -131,30 +131,31 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
     lcd.setCursor(12, 3);
   }
   lcd.print(temperature);
-
 }
 
 void loop() {
-
   // Read data from sensors & print data
   int current = analogRead(pinA);
   int voltage = getVoltage();
   int temp = (int) getCelcius();
+  Serial.println(temp);
   int rpm = analogRead(pinPWM_IN);
   uint8_t buf[] = { current, voltage, temp };
 
+  // Alarm if something got wrong
   if (current > 20 || voltage > 13 || temp > 45) {
     alarm();
   } else {
     lcd.noBacklight();
   }
 
+  // Update values one time in 500ms
   if (millis() - prev_time_update > 500) {
     updateValues(current, voltage, rpm, temp);
     prev_time_update = millis();
+    // Send values to the third pilot
+    //Serial.write(buf, 3);
   }
-
-  Serial.write(buf, 3);
 
   // Write value based on the PSU temperature to the fans
   float value = temp / 60 * 255;

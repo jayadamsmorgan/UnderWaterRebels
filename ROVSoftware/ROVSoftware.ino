@@ -57,7 +57,7 @@
 int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 242), remote_device;
+IPAddress ip(192, 168, 8, 177), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
 unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
@@ -275,10 +275,10 @@ char receiveMessage() {
   int packetSize = Udp.parsePacket();
   if (packetSize > 0) {
     Serial.print("Received packet of size: ");
-    Serial.print(packetSize);
+    Serial.println(packetSize);
   }
   if (packetSize == INCOMING_PACKET_SIZE) {
-    Serial.println(". Size is correct.");
+    Serial.println("Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
     for (int i = 0; i < 5; ++i)
@@ -330,7 +330,7 @@ char receiveMessage() {
     return 1;
   }
   else {
-    Serial.println(". Size is incorrect.");
+    //Serial.println("Size is incorrect.");
     return 0;
   }
 }
@@ -439,6 +439,7 @@ void tightenManipulator(char dir) {
 void setup() {
   // Init I2C connection for IMU
   Wire.begin();
+  Serial.begin(250000);
 
   // Init brushless motors
   horMotor1.attach(MOTOR1PIN);
@@ -459,8 +460,7 @@ void setup() {
   // Ethernet & Serial port init
   Ethernet.begin(mac, ip);
   Udp.begin(8000);
-  Serial.begin(250000);
-
+  
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
   camera.write(camera_angle);
@@ -563,8 +563,8 @@ void updateYPR() {
 }
 
 void loop() {
-  updateYPR();
-  updateDepth();
+  //updateYPR();
+  //updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
