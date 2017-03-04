@@ -260,7 +260,7 @@ void autoYaw() {
 
 // Function for correct angles for PID
 double rotationAngle(double currentAngle, double targetAngle) {
-  double rotationAngle = yawSetpoint - yaw;
+  double rotationAngle = targetAngle - currentAngle;
   if (abs(rotationAngle) > 180.0) {
     if (rotationAngle < 0) {
       rotationAngle = 360.0 - abs(rotationAngle);
@@ -268,6 +268,7 @@ double rotationAngle(double currentAngle, double targetAngle) {
       rotationAngle = abs(rotationAngle) - 360.0;
     }
   }
+  return rotationAngle;
 }
 
 // Receiving messages from PC & parsing
@@ -369,7 +370,7 @@ void horizontalMotorControl(Servo motor, short x, short y, short z) {
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
-  POW = short((sum * (MOTORRANGE / 100.0)) * speedK);
+  POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
@@ -388,7 +389,7 @@ void verticalMotorControl(Servo motor, short z) {
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
   Serial.print("Vertical motor pow: "); Serial.println(POW);
-  POW = short((sum * (MOTORRANGE / 100.0)) * speedK);
+  POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
