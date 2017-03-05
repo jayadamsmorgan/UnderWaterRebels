@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
     QTimer timer;
 
     QObject::connect(&timer,SIGNAL(timeout()),&worker,SLOT(onTimeOut()));
-
+    QObject::connect(&worker,SIGNAL(updateInfo(int,int,int,bool,bool,bool,bool)),&w,SLOT(onupdateInfo(int,int,int,bool,bool,bool,bool)));
     timer.start(200);
 
     timer.moveToThread(&thread);

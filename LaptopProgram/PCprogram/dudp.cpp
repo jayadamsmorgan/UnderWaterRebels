@@ -13,7 +13,10 @@ DUdp::DUdp(QHostAddress adr, quint16 pr)
 void DUdp::sendPacket(QByteArray out)
 {
     socket->writeDatagram(out,address,port);
-    //state = socket->bind(address,port);
+    qDebug() << (int)out[0]<< (int)out[1]<< (int)out[2]<< (int)out[3]<< (int)out[4]<< (int)out[5]<< (int)out[6]<< (int)out[7];
+    //qDebug() << AY <<" " <<AD<<" "<<AP;
+    qDebug() << "\n";
+    state = socket->bind(address,port);
 }
 
 QByteArray DUdp::readPacket()

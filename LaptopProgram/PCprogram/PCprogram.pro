@@ -27,3 +27,6 @@ HEADERS  += mainwindow.h \
     worker.h
 
 FORMS    += mainwindow.ui
+
+RESOURCES += \
+    res.qrc

@@ -1,6 +1,6 @@
 #include "worker.h"
 
-QHostAddress kulebyaka("192.168.1.242");
+QHostAddress kulebyaka("192.168.8.177");
 quint16 port = 8000;
 
 Worker::Worker(QObject *parent) : QObject(parent)
@@ -32,7 +32,7 @@ void Worker::onTimeOut()
 
     input = Veichle->readPacket();
     parsePacket();
-
+    uinformation();
 
 }
 
@@ -42,6 +42,14 @@ void Worker::parsePacket()
 
 }
 
+void Worker::uinformation()
+{
+    ping = 0;
+    depth = 0;
+
+    emit updateInfo(ping,depth,speedMode,Veichle->state,AY,AP,AD);
+
+}
 void Worker::formPacket()
 {
 
@@ -119,8 +127,6 @@ void Worker::formPacket()
     output.append(button);
     //for(int i = 0; i < output.size();++i)
     //{
-    qDebug() << (int)output[0]<< (int)output[1]<< (int)output[2]<< (int)output[3]<< (int)output[4]<< (int)output[5]<< (int)output[6]<< (int)output[7];
-    //qDebug() << AY <<" " <<AD<<" "<<AP;
-    qDebug() << "\n";
+
 }
 
