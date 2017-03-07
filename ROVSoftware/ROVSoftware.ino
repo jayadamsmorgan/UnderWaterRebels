@@ -43,16 +43,16 @@
 #define OUTCOMING_PACKET_SIZE    10
 
 #define PITCH_KP                 2.0  // ?
-#define PITCH_KI                 1.0  // ?
-#define PITCH_KD                 0.5  // ?
+#define PITCH_KI                 0.0  // ?
+#define PITCH_KD                 0.0  // ?
 
 #define DEPTH_KP                 2.0  // ?
-#define DEPTH_KI                 1.0  // ?
-#define DEPTH_KD                 0.5  // ?
+#define DEPTH_KI                 0.0  // ?
+#define DEPTH_KD                 0.0  // ?
 
 #define YAW_KP                   2.0  // ?
-#define YAW_KI                   1.0  // ?
-#define YAW_KD                   0.5  // ?
+#define YAW_KI                   0.0  // ?
+#define YAW_KD                   0.0  // ?
 
 int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
@@ -84,10 +84,10 @@ double pressure_abs, pressure_baseline;
 signed char js_val[5];
 bool buttons[8];
 
-bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
+bool isAutoDepth = false, isAutoPitch = true, isAutoYaw = false;
 bool leak[8];
 
-float speedK = 1;
+float speedK = 0.3;
 
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
@@ -101,7 +101,7 @@ PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRE
 // Function for controlling motor system
 void controlPeripherals() {
   // Auto modes realization:
-  if ((isAutoPitch && isAutoDepth) || js_val[2] == 0) {
+  if (isAutoPitch && isAutoDepth) {
     Serial.println("Using AutoPitch & AutoDepth mode");
     autoPitchAndDepth();
   } else if (isAutoPitch) {
@@ -111,14 +111,12 @@ void controlPeripherals() {
   } else if (isAutoDepth) {
     Serial.println("Using AutoDepth mode");
     autoDepth();
-    pitchSetpoint = pitch; // Set target for AutoPitch
   } else {
     // Set vertical thrust
     verticalMotorControl(verMotor1, js_val[2]);
     verticalMotorControl(verMotor2, js_val[2]);
 
-    // Set targets for AutoPitch & AutoDepth
-    pitchSetpoint = pitch;
+    // Set target for AutoDepth
     depthSetpoint = depth;
   }
 
@@ -180,7 +178,7 @@ void autoPitchAndDepth() {
   }
 
   depthInput = depth;
-  pitchInput = rotationAngle(pitch, pitchSetpoint);
+  pitchInput = rotationAngle(pitch, 0);
 
   autoPitchPID.Compute();
   autoDepthPID.Compute();
@@ -210,11 +208,20 @@ void autoPitchAndDepth() {
 
 // AutoPitch mode
 void autoPitch() {
-  pitchInput = rotationAngle(pitch, pitchSetpoint);
+  pitchInput = pitch;
+  Serial.print("Rotation angle: "); Serial.println(pitchInput);
+  signed char dir = 0;
+  if (pitchInput > 0) {
+    dir = 1;
+  } else {
+    dir = -1;
+  }
+  pitchInput = -abs(pitchInput);
   autoPitchPID.Compute();
-  Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
-  Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
-  Serial.print("Current pitch is: ");        Serial.println(pitch);
+
+  if (dir < 0) {
+    pitchOutput = -abs(pitchOutput);
+  }
 
   // Value correction:
   if (pitchOutput > 100.0) {
@@ -223,6 +230,9 @@ void autoPitch() {
   if (pitchOutput < -100.0) {
     pitchOutput = -100.0;
   }
+  Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
+  Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
+  Serial.print("Current pitch is: ");        Serial.println(pitch);
 
   verticalMotorControl(verMotor1, (char) pitchOutput);
   verticalMotorControl(verMotor2, (char) - pitchOutput);
@@ -282,10 +292,13 @@ char receiveMessage() {
     Serial.println("Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 5; ++i)  {
       js_val[i] = (signed char)packetBuffer[i];
+      Serial.print("js"); Serial.print(i); Serial.print(": "); Serial.println(js_val[i]);
+    }
     for (int i = 0; i < 8; ++i) {
       buttons[i] = (packetBuffer[5] >> i) & 1;
+      Serial.print("btn"); Serial.print(i); Serial.print(": "); Serial.println(buttons[i]);
     }
 
     if (buttons[0] == 1 && buttons[1] == 0) {
@@ -315,6 +328,11 @@ char receiveMessage() {
     char bit1 = (packetBuffer[6]) & 1;
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
+
+    Serial.print("bit1: "); Serial.println(bit1);
+    Serial.print("bit2: "); Serial.println(bit2);
+    Serial.print("bit3: "); Serial.println(bit3);
+
     if (bit1 == 1) {
       speedK = 1.0;
     }
@@ -326,8 +344,11 @@ char receiveMessage() {
     }
 
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
+    Serial.println(isAutoDepth);
     isAutoPitch = (packetBuffer[6] >> 4) & 1;
+    Serial.println(isAutoPitch);
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
+    Serial.println(isAutoYaw);
     return 1;
   }
   else {
@@ -461,7 +482,7 @@ void setup() {
   // Ethernet & Serial port init
   Ethernet.begin(mac, ip);
   Udp.begin(8000);
-  
+
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
   camera.write(camera_angle);
@@ -472,6 +493,9 @@ void setup() {
   autoPitchPID.SetMode(AUTOMATIC);
   autoDepthPID.SetMode(AUTOMATIC);
   autoYawPID.SetMode(AUTOMATIC);
+  pitchSetpoint = 0;
+  accelerometer.begin();
+  compass.begin();
 
   // Some delay for motors...
   delay(1000);
@@ -561,13 +585,14 @@ void updateYPR() {
   }
 
   yaw = yaw * 180 / M_PI;
+  Serial.print("yaw: "); Serial.println(yaw);
 }
 
 void loop() {
-  //updateYPR();
+  updateYPR();
   //updateDepth();
-  if (receiveMessage() == 1) {
+  /*if (receiveMessage() == 1) {
     sendReply();
-  }
+    }*/
   controlPeripherals();
 }
