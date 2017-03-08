@@ -12,8 +12,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1271</width>
-    <height>730</height>
+    <width>1275</width>
+    <height>720</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -62,7 +62,7 @@
       <x>10</x>
       <y>34</y>
       <width>111</width>
-      <height>22</height>
+      <height>27</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_2">
@@ -100,7 +100,7 @@
       <x>11</x>
       <y>10</y>
       <width>111</width>
-      <height>16</height>
+      <height>18</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_3">
@@ -126,7 +126,7 @@
       <x>11</x>
       <y>30</y>
       <width>111</width>
-      <height>16</height>
+      <height>18</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_5">
@@ -168,7 +168,7 @@
       <x>11</x>
       <y>10</y>
       <width>111</width>
-      <height>16</height>
+      <height>18</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_4">
@@ -194,7 +194,7 @@
       <x>11</x>
       <y>30</y>
       <width>111</width>
-      <height>16</height>
+      <height>18</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_6">

@@ -7,7 +7,7 @@
 #include <QTimer>
 #include <QResizeEvent>
 #include "paintscene.h"
-
+#include <QLabel>
 
 namespace Ui{
 class TherdPilot;
@@ -47,8 +47,13 @@ private:
     QTimer *timer;
     paintScene *scene;
     void resizeEvent(QResizeEvent * event);
+
+    QVBoxLayout *ImageLayout;
+    QLabel *imageContainer;
 private slots:
     void slotTimer();
+    int processImage(int requestId, QImage img);
+
 
 };
 

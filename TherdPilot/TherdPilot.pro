@@ -19,5 +19,5 @@ FORMS    += therdpilot.ui
 
 QMAKE_CXXFLAGS += -std=gnu++14
 
-RESOURCES += \
-    iop.qrc
+#RESOURCES += \
+#    iop.qrc

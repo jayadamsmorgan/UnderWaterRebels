@@ -42,7 +42,7 @@ TherdPilot::TherdPilot(QWidget *parent) :
     mCamera->setViewfinder(mCameraViewfinder);
     mLayout->addWidget(mCameraViewfinder);
     mLayout->setMargin(0);
-   // ui->graphicsView->setLayout(mLayout);
+    ui->graphicsView->setLayout(mLayout);
 
 
     StartB = new QPushButton ("Start Camera", this);
@@ -63,19 +63,29 @@ TherdPilot::TherdPilot(QWidget *parent) :
     SavePB ->move(1140,144);
     SavePB ->resize(110,21);
     connect(SavePB, &QPushButton::clicked, [&](){
-        auto filename = QFileDialog::getSaveFileName(this,"Picture","/","Image (*.jpg;*.jpeg)");
-        if (filename.isEmpty()){       return;   }
-        mCameraImageCapture->setCaptureDestination(QCameraImageCapture::CaptureToFile);
+       // auto filename = QFileDialog::getSaveFileName(this,"Picture","/","Image (*.jpg;*.jpeg)");
+        //if (filename.isEmpty()){       return;   }
+        //mCameraImageCapture->setCaptureDestination(QCameraImageCapture::CaptureToBuffer);
         QImageEncoderSettings imageEncoderSettings;
-        imageEncoderSettings.setCodec("image/jpeg");
+        //imageEncoderSettings.setCodec("image/jpeg");
         imageEncoderSettings.setResolution(1920, 1080);
         mCameraImageCapture->setEncodingSettings(imageEncoderSettings);
         mCamera->setCaptureMode(QCamera::CaptureStillImage);
         mCamera->start();
         mCamera->searchAndLock();
-        mCameraImageCapture->capture(filename);
+        //mCameraImageCapture->capture(filename);
+        mCameraImageCapture->capture();
         mCamera->unlock();
     });
+    connect(mCameraImageCapture, SIGNAL(imageCaptured(int,QImage)), this, SLOT(processImage(int,QImage)));
+    ImageLayout = new QVBoxLayout();
+    imageContainer = new QLabel();
+    ImageLayout->addWidget(imageContainer);
+    mCameraViewfinder->setLayout(ImageLayout);
+
+
+
+
 }
 
 TherdPilot::~TherdPilot(){
@@ -110,4 +120,17 @@ void TherdPilot::onMouseEvent(const QPoint &pos){
 }
 
 
+int TherdPilot::processImage(int requestId, QImage img)
+{
 
+    Q_UNUSED(requestId);
+    qDebug() << "lol";
+    QImage scaledImage = img.scaled(mCameraViewfinder->size(),
+                                    Qt::KeepAspectRatio,
+                                    Qt::SmoothTransformation);
+
+    imageContainer->setPixmap(QPixmap::fromImage(scaledImage));
+
+
+
+}
