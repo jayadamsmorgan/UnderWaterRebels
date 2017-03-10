@@ -261,7 +261,7 @@ void autoDepth() {
 
 // AutoYaw mode
 void autoYaw() {
-  yawInput = yaw - yawSetpoint;
+  yawInput = rotationAngle(yaw, yawSetpoint);
   Serial.print("Rotation angle: "); Serial.println(yawInput);
   if (yawInput > -0.50 && yawInput < 0.50) {
     return;
@@ -288,6 +288,9 @@ void autoYaw() {
   if (dir < 0) {
     val += yawSetpoint / 2;
   }
+  if (abs(val) > 100) {
+    return;
+  }
   Serial.print("AutoYaw PID output is: "); Serial.println(val);
   Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
   Serial.print("Current yaw is: ");        Serial.println(yaw);
@@ -300,13 +303,11 @@ void autoYaw() {
 
 // Function for correct angles for PID
 double rotationAngle(double currentAngle, double targetAngle) {
-  double rotationAngle = targetAngle - currentAngle;
-  if (abs(rotationAngle) > 180.0) {
-    if (rotationAngle < 0) {
-      rotationAngle = 360.0 - abs(rotationAngle);
-    } else if (rotationAngle > 0) {
-      rotationAngle = abs(rotationAngle) - 360.0;
-    }
+  double rotationAngle = currentAngle - targetAngle;
+  if (rotationAngle >= 180.00) {
+    rotationAngle = rotationAngle - 360.00;
+  } else if (rotationAngle < -180.00) {
+    rotationAngle = 360.0 - abs(rotationAngle);
   }
   return rotationAngle;
 }
@@ -614,7 +615,6 @@ void updateYPR() {
   }
 
   yaw = yaw * 180 / M_PI;
-  Serial.print("yaw: "); Serial.println(yaw);
 }
 
 void loop() {
