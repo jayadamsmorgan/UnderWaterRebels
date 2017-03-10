@@ -50,7 +50,7 @@
 #define DEPTH_KI                 0.0  // ?
 #define DEPTH_KD                 0.0  // ?
 
-#define YAW_KP                   2.0  // ?
+#define YAW_KP                   0.0001  // ?
 #define YAW_KI                   0.0  // ?
 #define YAW_KD                   0.0  // ?
 
@@ -75,7 +75,8 @@ unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
 char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
 
-float yaw = 0, pitch = 0, roll = 0;
+double declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
+double yaw = 0, pitch = 0, roll = 0;
 int depth = 0;
 
 // Create variables to store results for depth calculations
@@ -84,10 +85,10 @@ double pressure_abs, pressure_baseline;
 signed char js_val[5];
 bool buttons[8];
 
-bool isAutoDepth = false, isAutoPitch = true, isAutoYaw = false;
+bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 bool leak[8];
 
-float speedK = 0.3;
+double speedK = 0.3;
 
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
@@ -260,12 +261,41 @@ void autoDepth() {
 
 // AutoYaw mode
 void autoYaw() {
-  yawInput = rotationAngle(yaw, yawSetpoint);
+  yawInput = yaw - yawSetpoint;
+  Serial.print("Rotation angle: "); Serial.println(yawInput);
+  if (yawInput > -0.50 && yawInput < 0.50) {
+    return;
+  }
+  signed char dir = 0;
+  if (yawInput > 0) {
+    dir = 1;
+  } else {
+    dir = -1;
+  }
+  yawInput = -abs(yawInput);
   autoYawPID.Compute();
-  horizontalMotorControl(horMotor1, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor2, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor3, 0, 0, yawOutput);
-  horizontalMotorControl(horMotor4, 0, 0, yawOutput);
+  if (dir < 0) {
+    yawOutput = -abs(yawOutput);
+  }
+
+  double val = yawOutput * 5000;
+  if (dir == 0) {
+    val = 0;
+  }
+  if (dir > 0) {
+    val -= yawSetpoint / 2;
+  }
+  if (dir < 0) {
+    val += yawSetpoint / 2;
+  }
+  Serial.print("AutoYaw PID output is: "); Serial.println(val);
+  Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
+  Serial.print("Current yaw is: ");        Serial.println(yaw);
+
+  horizontalMotorControl(horMotor1, 0, 0, val);
+  horizontalMotorControl(horMotor2, 0, 0, -val);
+  horizontalMotorControl(horMotor3, 0, 0, val);
+  horizontalMotorControl(horMotor4, 0, 0, -val);
 }
 
 // Function for correct angles for PID
@@ -386,12 +416,12 @@ void sendReply() {
 
 // Function to control horizontal brushless motors
 void horizontalMotorControl(Servo motor, short x, short y, short z) {
-  short POW = 0;
+  int POW = 0;
   int sum = x + y + z;
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
-  Serial.print("Horizontal motor pow: "); Serial.println(POW);
   POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
+  Serial.print("Horizontal motor pow: "); Serial.println(POW);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
@@ -405,12 +435,12 @@ void horizontalMotorControl(Servo motor, short x, short y, short z) {
 
 // Function to control vertical brushless motors
 void verticalMotorControl(Servo motor, short z) {
-  short POW = 0;
-  short sum = z;
+  int POW = 0;
+  int sum = z;
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
-  Serial.print("Vertical motor pow: "); Serial.println(POW);
   POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
+  Serial.print("Vertical motor pow: "); Serial.println(POW);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
@@ -542,8 +572,8 @@ void updateYPR() {
   yaw = atan2(mag.YAxis, mag.XAxis);
 
 
-  float fpitcharray[10];
-  float frollarray[10];
+  double fpitcharray[10];
+  double frollarray[10];
   for (int i = 0; i < 10; i++) {
     Vector accl = accelerometer.readNormalize();
     Vector faccl = accelerometer.lowPassFilter(accl, 0.5);
@@ -574,7 +604,6 @@ void updateYPR() {
   pitch = fpitcharray[4];
   roll = frollarray[4];
 
-  float declinationAngle = (4.0 + (26.0 / 60.0)) / (180 / M_PI);
   yaw += declinationAngle;
 
   if (yaw < 0) {
