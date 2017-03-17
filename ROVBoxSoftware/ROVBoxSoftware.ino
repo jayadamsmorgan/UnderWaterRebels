@@ -13,7 +13,7 @@
 #define pinV          A1 // Voltmeter voltage divider pin
 #define pinPWM_IN     A2 // Fan's pwm reading rpm pin
 #define pinPWM_OUT     3 // Fan's pwm writing rpm pin
-#define pinTemp        2 // Temperature sensor pin
+#define pinTemp       10 // Temperature sensor pin
 
 #define R1 100000 // Real resistance on first resistor in voltage divider
 #define R2 10000  // Real resistance on second resistor in voltage divider
@@ -138,7 +138,6 @@ void loop() {
   int current = analogRead(pinA);
   int voltage = getVoltage();
   int temp = (int) getCelcius();
-  Serial.println(temp);
   int rpm = analogRead(pinPWM_IN);
   uint8_t buf[] = { current, voltage, temp };
 

@@ -82,20 +82,24 @@ int depth = 0;
 // Create variables to store results for depth calculations
 double pressure_abs, pressure_baseline;
 
+// Variable for storing joystick values
 signed char js_val[5];
 bool buttons[8];
 
-bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
+// Auto modes
+bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = true;
+
+// Array for leak sensors values
 bool leak[8];
 
+// Speed mode for arranging speed
 double speedK = 0.3;
 
+// PIDs for auto modes
 double pitchSetpoint, pitchInput, pitchOutput;
 PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, PITCH_KD, DIRECT);
-
 double depthSetpoint, depthInput, depthOutput;
 PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD, DIRECT);
-
 double yawSetpoint, yawInput, yawOutput;
 PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRECT);
 
@@ -121,7 +125,7 @@ void controlPeripherals() {
     depthSetpoint = depth;
   }
 
-  // AutoYaw mode:
+  // AutoYaw mode realization:
   if (isAutoYaw) {
     Serial.println("Using AutoYaw mode");
     autoYaw();
@@ -136,8 +140,11 @@ void controlPeripherals() {
     yawSetpoint = yaw;
   }
 
+  // Rotate & tight manipulator
+  rotateManipulator(js_val[4]);
   tightenManipulator(manTightDir);
 
+  // Camera's servo controlling
   unsigned long long current_time = millis();
   if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (servoCamDir > 0) {
@@ -153,6 +160,7 @@ void controlPeripherals() {
   camera.write(camera_angle);
   prev_camera_servo_update = millis();
 
+  // Bottom maniplulator's servo controlling
   current_time = millis();
   if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (botManipDir > 0) {
@@ -167,8 +175,6 @@ void controlPeripherals() {
   }
   bottomManip.write(bottom_manip_angle);
   prev_manip_servo_update = millis();
-
-  rotateManipulator(js_val[4]);
 }
 
 // AutoPitch & AutoDepth mode
@@ -209,6 +215,7 @@ void autoPitchAndDepth() {
 
 // AutoPitch mode
 void autoPitch() {
+  // Some PID magic, some bad coding....... Do not try to understand that.......
   pitchInput = pitch;
   Serial.print("Rotation angle: "); Serial.println(pitchInput);
   signed char dir = 0;
@@ -223,7 +230,8 @@ void autoPitch() {
   if (dir < 0) {
     pitchOutput = -abs(pitchOutput);
   }
-
+  // ........... 
+  
   // Value correction:
   if (pitchOutput > 100.0) {
     pitchOutput = 100.0;
@@ -261,6 +269,7 @@ void autoDepth() {
 
 // AutoYaw mode
 void autoYaw() {
+  // Some PID magic, some bad coding....... Do not try to understand that.......
   yawInput = rotationAngle(yaw, yawSetpoint);
   Serial.print("Rotation angle: "); Serial.println(yawInput);
   if (yawInput > -0.50 && yawInput < 0.50) {
@@ -277,7 +286,6 @@ void autoYaw() {
   if (dir < 0) {
     yawOutput = -abs(yawOutput);
   }
-
   double val = yawOutput * 5000;
   if (dir == 0) {
     val = 0;
@@ -291,6 +299,8 @@ void autoYaw() {
   if (abs(val) > 100) {
     return;
   }
+  // .......
+  
   Serial.print("AutoYaw PID output is: "); Serial.println(val);
   Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
   Serial.print("Current yaw is: ");        Serial.println(yaw);
@@ -301,15 +311,15 @@ void autoYaw() {
   horizontalMotorControl(horMotor4, 0, 0, -val);
 }
 
-// Function for correct angles for PID
+// Function for correct angles for PID (calcuating minimal angle for rotation)
 double rotationAngle(double currentAngle, double targetAngle) {
   double rotationAngle = currentAngle - targetAngle;
   if (rotationAngle >= 180.00) {
     rotationAngle = rotationAngle - 360.00;
   } else if (rotationAngle < -180.00) {
-    rotationAngle = 360.0 - abs(rotationAngle);
+    rotationAngle = 360.00 - abs(rotationAngle);
   }
-  return rotationAngle;
+  return rotationAngle; // -180 < rotationAngle <= 180
 }
 
 // Receiving messages from PC & parsing
@@ -365,13 +375,13 @@ char receiveMessage() {
     Serial.print("bit3: "); Serial.println(bit3);
 
     if (bit1 == 1) {
-      speedK = 1.0;
+      speedK = 1.00;
     }
     if (bit2 == 1) {
-      speedK = 0.6;
+      speedK = 0.60;
     }
     if (bit3 == 1) {
-      speedK = 0.3;
+      speedK = 0.30;
     }
 
     isAutoDepth = (packetBuffer[6] >> 3) & 1;
@@ -393,14 +403,14 @@ void sendReply() {
   Serial.print("PC is on :"); Serial.println(remote_device);
 
   Serial.println("Forming packet...");
-  replyBuffer[0] = ((int) (yaw * 100.0) >> 8) & 0xFF;
-  replyBuffer[1] = ((int) (yaw * 100.0)) & 0xFF;
-  replyBuffer[2] = ((int) (pitch * 100.0) >> 8) & 0xFF;
-  replyBuffer[3] = ((int) (pitch * 100.0)) & 0xFF;
-  replyBuffer[4] = ((int) (roll * 100.0) >> 8) & 0xFF;
-  replyBuffer[5] = ((int) (roll * 100.0)) & 0xFF;
-  replyBuffer[6] = ((int) (depth * 100.0) >> 8) & 0xFF;
-  replyBuffer[7] = ((int) (depth * 100.0)) & 0xFF;
+  replyBuffer[0] = ((int) (yaw * 100.00) >> 8) & 0xFF;
+  replyBuffer[1] = ((int) (yaw * 100.00)) & 0xFF;
+  replyBuffer[2] = ((int) (pitch * 100.00) >> 8) & 0xFF;
+  replyBuffer[3] = ((int) (pitch * 100.00)) & 0xFF;
+  replyBuffer[4] = ((int) (roll * 100.00) >> 8) & 0xFF;
+  replyBuffer[5] = ((int) (roll * 100.00)) & 0xFF;
+  replyBuffer[6] = ((int) (depth * 100.00) >> 8) & 0xFF;
+  replyBuffer[7] = ((int) (depth * 100.00)) & 0xFF;
   for (int i = 0; i < 8; ++i) {
     replyBuffer[8] |= leak[i] << i;
   }
@@ -419,8 +429,8 @@ void sendReply() {
 void horizontalMotorControl(Servo motor, short x, short y, short z) {
   int POW = 0;
   int sum = x + y + z;
-  if (sum > 100.0) sum = 100.0;
-  if (sum < (-100.0)) sum = -100.0;
+  if (sum > 100.0) sum = 100.00;
+  if (sum < (-100.0)) sum = -100.00;
   POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
   if (POW == 0) {
@@ -467,9 +477,6 @@ void rotateManipulator(short m) {
     digitalWrite(MAIN_MANIP_ROT_PINA, LOW);
     digitalWrite(MAIN_MANIP_ROT_PINB, LOW);
   }
-  short POW = 0;
-  POW = short(abs(m) * 255.0 / 100.0);
-  analogWrite(MAIN_MANIP_ROT_PINPWM, POW);
 }
 
 // Function to tight manipulator
@@ -486,7 +493,6 @@ void tightenManipulator(char dir) {
     digitalWrite(MAIN_MANIP_TIGHT_PINA, LOW);
     digitalWrite(MAIN_MANIP_TIGHT_PINB, LOW);
   }
-  analogWrite(MAIN_MANIP_TIGHT_PINPWM, 255);
 }
 
 void setup() {
@@ -568,11 +574,21 @@ double altitude(double P, double P0) {
 
 // Function for updating yaw, pitch, roll
 void updateYPR() {
+  // Reading magnetometer values from IMU
   Vector mag = compass.readNormalize();
 
+  // Calculating yaw
   yaw = atan2(mag.YAxis, mag.XAxis);
+  yaw += declinationAngle;
+  if (yaw < 0) {
+    yaw += 2 * PI;
+  }
+  if (yaw > 2 * PI) {
+    yaw -= 2 * PI;
+  }
+  yaw = yaw * 180 / M_PI;
 
-
+  // Reading accelerometer values from IMU; calculating & filtering (median filter) pitch & roll
   double fpitcharray[10];
   double frollarray[10];
   for (int i = 0; i < 10; i++) {
@@ -604,24 +620,13 @@ void updateYPR() {
 
   pitch = fpitcharray[4];
   roll = frollarray[4];
-
-  yaw += declinationAngle;
-
-  if (yaw < 0) {
-    yaw += 2 * PI;
-  }
-  if (yaw > 2 * PI) {
-    yaw -= 2 * PI;
-  }
-
-  yaw = yaw * 180 / M_PI;
 }
 
 void loop() {
   updateYPR();
-  //updateDepth();
-  /*if (receiveMessage() == 1) {
+  updateDepth();
+  if (receiveMessage() == 1) {
     sendReply();
-    }*/
+    }
   controlPeripherals();
 }
