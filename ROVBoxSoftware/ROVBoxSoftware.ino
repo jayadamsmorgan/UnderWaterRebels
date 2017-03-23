@@ -9,16 +9,17 @@
 #define printByte(args)  print(args,BYTE);
 #endif
 
-#define pinA          A0 // Ammeter pin
+#define pinA          A2 // Ammeter pin
 #define pinV          A1 // Voltmeter voltage divider pin
-#define pinPWM_IN     A2 // Fan's pwm reading rpm pin
-#define pinPWM_OUT     3 // Fan's pwm writing rpm pin
-#define pinTemp       10 // Temperature sensor pin
+#define pinPWM_OUT     5 // Fan's pwm writing rpm pin
+#define pinTemp       A0 // Temperature sensor pin
 
 #define R1 100000 // Real resistance on first resistor in voltage divider
 #define R2 10000  // Real resistance on second resistor in voltage divider
 
 #define k 5.0 // Real Voltage between GND & 5V on arduino
+
+#define MAX_TEMP 35 // Maximum critical temperature in box
 
 OneWire ds(pinTemp); // One-Wire BS18B20 temperature
 LiquidCrystal_I2C lcd(0x3F, 20, 4); // I2C 2004 LCD
@@ -27,6 +28,16 @@ long long prev_time_alarm;
 long long prev_time_update;
 boolean isBacklight;
 
+// Some variables for getting fan's rpm
+const int numreadings = 10;
+int readings[numreadings];
+unsigned long average = 0;
+int index = 0;
+unsigned long total;
+volatile int rpmcount = 0;
+unsigned long rpm = 0;
+unsigned long lastmillis = 0;
+
 void setup() {
   // Serial init
   Serial.begin(115200);
@@ -34,8 +45,8 @@ void setup() {
   // Pins init
   pinMode(pinA, INPUT);
   pinMode(pinV, INPUT);
-  pinMode(pinPWM_IN, INPUT);
   pinMode(pinPWM_OUT, OUTPUT);
+  attachInterrupt(0, rpm_fan, FALLING);
 
   // Display init
   lcd.init();
@@ -102,7 +113,7 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
   }
   lcd.print(voltage);
 
-  // Printing RPM based 
+  // Printing RPM based
   lcd.setCursor(4, 2);
   if (rpm < 10) {
     lcd.print("    ");
@@ -138,7 +149,7 @@ void loop() {
   int current = analogRead(pinA);
   int voltage = getVoltage();
   int temp = (int) getCelcius();
-  int rpm = analogRead(pinPWM_IN);
+  updateRPM();
   uint8_t buf[] = { current, voltage, temp };
 
   // Alarm if something got wrong
@@ -154,17 +165,17 @@ void loop() {
     prev_time_update = millis();
     // Send values to the third pilot
     //Serial.write(buf, 3);
+    
+    // Write value based on the PSU temperature to the fans
+    int value = temp * 255 / MAX_TEMP;
+    if (value > 255) {
+      value = 255;
+    }
+    if (value < 0) {
+      value = 0;
+    }
+    analogWrite(pinPWM_OUT, value);
   }
-
-  // Write value based on the PSU temperature to the fans
-  float value = temp / 60 * 255;
-  if (value > 255) {
-    value = 255;
-  }
-  if (value < 0) {
-    value = 0;
-  }
-  analogWrite(pinPWM_OUT, value);
 }
 
 float getVoltage() {
@@ -230,3 +241,33 @@ float getCelcius() {
   celsius = (float)raw / 16.0;
   return celsius;
 }
+
+void updateRPM() {
+  if (millis() - lastmillis >= 1000) { /* Update every one second, this will be equal to reading frecuency (Hz).*/
+
+    detachInterrupt(0);    //Disable interrupt when calculating
+    total = 0;
+    readings[index] = rpmcount * 60;  /* Convert frecuency to RPM, note: this works for one interruption per full rotation. For two interrups per full rotation use rpmcount * 30.*/
+
+    for (int x = 0; x <= 9; x++) {
+      total = total + readings[x];
+    }
+
+    average = total / numreadings;
+    rpm = average;
+
+    rpmcount = 0; // Restart the RPM counter
+    index++;
+    if (index >= numreadings) {
+      index = 0;
+    }
+
+    lastmillis = millis(); // Uptade lasmillis
+    attachInterrupt(0, rpm_fan, FALLING); //enable interrupt
+  }
+}
+
+void rpm_fan() { /* this code will be executed every time the interrupt 0 (pin2) gets low.*/
+  rpmcount++;
+}
+
