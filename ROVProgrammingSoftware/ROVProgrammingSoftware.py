@@ -12,7 +12,10 @@ class GUI:
         self.send_btn = Tk.Button(root, text="Send binary", command=self.send_binary)
         self.prepare_btn.pack()
         self.send_btn.pack()
-        self.is_prepeared = 0
+        self.is_prepared = 0
+        self.local_ip = ""
+        self.binary = ""
+        self.hex_bin = ""
 
     def prepare_binary(self):
         is_found = 0
@@ -42,15 +45,15 @@ class GUI:
             if output_array[x] == "rov.bin":
                 print "OK!"
                 is_found = 2
-                self.hex_bin = output_array[x]
+                self.binary = output_array[x]
                 break
         if is_found != 2:
             print "Error ;("
             return
-        self.is_prepeared = 1
+        self.is_prepared = 1
 
     def send_binary(self):
-        if self.is_prepeared != 1:
+        if self.is_prepared != 1:
             print "Prepare binary first!"
             return
         print "Sending binary..."
@@ -63,9 +66,9 @@ class GUI:
         print "Target IP address is: " + self.target_ip
         try:
             client = Tcl(self.target_ip, self.target_port)
-            client.upload(input="~/Documents/CompiledArduinoSkecthes/rov.bin")
+            client.upload(input="~/Documents/CompiledArduinoSketches/rov.bin", filename="")
         except:
-            print "An error occured... ;("
+            print "An error occurred... ;("
 
 root = Tk.Tk()
 root.title("ROV Programming Software")
