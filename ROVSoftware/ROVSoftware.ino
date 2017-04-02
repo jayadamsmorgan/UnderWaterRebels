@@ -26,8 +26,11 @@
 #define MAIN_MANIP_TIGHT_PINB    17   // Some pin
 #define MAIN_MANIP_TIGHT_PINPWM  18   // Some pin
 
-#define SERVO_MANIPULATOR_PIN    19   // Some pin
-#define SERVO_CAMERA_PIN         20   // Some pin
+#define MULTIPLEXOR_PINA         19   // Some pin
+#define MULTIPLEXOR_PINB         20   // Some pin
+
+#define SERVO_MANIPULATOR_PIN    21   // Some pin
+#define SERVO_CAMERA_PIN         22   // Some pin
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 
@@ -88,6 +91,9 @@ bool buttons[8];
 
 // Auto modes
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = true;
+
+// Mux channels
+unsigned char muxChannel = 0;
 
 // Array for leak sensors values
 bool leak[8];
@@ -175,6 +181,8 @@ void controlPeripherals() {
   }
   bottomManip.write(bottom_manip_angle);
   prev_manip_servo_update = millis();
+
+  selectMuxChannel();
 }
 
 // AutoPitch & AutoDepth mode
@@ -365,6 +373,16 @@ char receiveMessage() {
     } else {
       botManipDir = 0;
     }
+    
+    if (buttons[6] == 0 && buttons[7] == 0) {
+      muxChannel = 0;
+    } else if (buttons[6] == 0 && buttons[7] == 1) {
+      muxChannel = 1;
+    } else if (buttons[6] == 1 && buttons[7] == 0) {
+      muxChannel = 2;
+    } else {
+      muxChannel = 3;
+    }
 
     char bit1 = (packetBuffer[6]) & 1;
     char bit2 = (packetBuffer[6] >> 1) & 1;
@@ -390,6 +408,7 @@ char receiveMessage() {
     Serial.println(isAutoPitch);
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
     Serial.println(isAutoYaw);
+
     return 1;
   }
   else {
@@ -620,6 +639,21 @@ void updateYPR() {
 
   pitch = fpitcharray[4];
   roll = frollarray[4];
+}
+
+void selectMuxChannel() {
+  if (muxChannel == 0) {
+    digitalWrite(MULTIPLEXOR_PINA, LOW);
+    digitalWrite(MULTIPLEXOR_PINB, LOW);
+  } 
+  else if (muxChannel == 1) {
+    digitalWrite(MULTIPLEXOR_PINA, HIGH);
+    digitalWrite(MULTIPLEXOR_PINB, LOW);
+  } 
+  else if (muxChannel == 2) {
+    digitalWrite(MULTIPLEXOR_PINA, LOW);
+    digitalWrite(MULTIPLEXOR_PINB, HIGH);
+  }
 }
 
 void loop() {
