@@ -1,17 +1,25 @@
 import Tkinter as Tk
 import commands as com
 import netifaces as ni
-from tftpy import TftpClient as Tcl
 
 
 class GUI:
+    def print_text(self, output_text):
+        output = Tk.Label(self.frame, text=output_text, font="Arial 12")
+        output.pack()
+
     def __init__(self):
         self.target_ip = "192.168.1.128"
         self.target_port = 69
-        self.prepare_btn = Tk.Button(root, text="Prepare binary", command=self.prepare_binary)
-        self.send_btn = Tk.Button(root, text="Send binary", command=self.send_binary)
+
+        self.frame = Tk.Frame(root, width=300, height=500)
+        self.prepare_btn = Tk.Button(self.frame, text="Prepare binary", command=self.prepare_binary)
+        self.send_btn = Tk.Button(self.frame, text="Send binary", command=self.send_binary)
+
         self.prepare_btn.pack()
         self.send_btn.pack()
+        self.frame.pack()
+
         self.is_prepared = 0
         self.local_ip = ""
         self.binary = ""
@@ -19,21 +27,21 @@ class GUI:
 
     def prepare_binary(self):
         is_found = 0
-        print "Searching for compiled .hex file..."
+        self.print_text("Searching for compiled .hex file...")
         output = com.getoutput("ls ~/Documents/CompiledArduinoSketches")
         output_array = output.splitlines()
         for i in output_array:
             i.strip()
         for x in range(0, len(output_array)):
             if output_array[x] == "ROVSoftware.ino.hex":
-                print "ROVSoftware Found!"
+                self.print_text("ROVSoftware Found!")
                 is_found = 1
                 self.hex_bin = output_array[x]
                 break
         if is_found != 1:
-            print "Hex file NOT found!"
+            self.print_text("Hex file NOT found!")
             return
-        print "Converting hex to binary..."
+        self.print_text("Converting hex to binary...")
         com.getoutput("avr-objcopy -I ihex ~/Documents/CompiledArduinoSketches/ROVSoftware.ino.hex "
                       "-O binary ~/Documents/CompiledArduinoSketches/rov.bin")
 
@@ -43,32 +51,33 @@ class GUI:
             i.strip()
         for x in range(0, len(output_array)):
             if output_array[x] == "rov.bin":
-                print "OK!"
+                self.print_text("OK!")
+                self.print_text("Now reboot your ROV and send bin in ~2 sec after rebooting")
                 is_found = 2
                 self.binary = output_array[x]
                 break
         if is_found != 2:
-            print "Error ;("
+            self.print_text("Error ;(")
             return
         self.is_prepared = 1
 
     def send_binary(self):
         if self.is_prepared != 1:
-            print "Prepare binary first!"
+            self.print_text("Prepare binary first!")
             return
-        print "Sending binary..."
+        self.print_text("Sending binary...")
         try:
             self.local_ip = ni.ifaddresses('en0')[2][0]['addr']
         except:
-            print "Check your connection to UnderwaterRebels' Wi-Fi"
+            self.print_text("Check your connection to UnderwaterRebels' Wi-Fi")
             return
-        print "Your IP address is: " + self.local_ip
-        print "Target IP address is: " + self.target_ip
-        try:
-            client = Tcl(self.target_ip, self.target_port)
-            client.upload(input="~/Documents/CompiledArduinoSketches/rov.bin", filename="")
-        except:
-            print "An error occurred... ;("
+        # TODO checking of my static ip
+        self.print_text("Your IP address is: " + self.local_ip)
+        self.print_text("Target IP address is: " + self.target_ip)
+        output = com.getoutput("bash ~/Documents/UnderwaterRebels/ROVProgrammingSoftware/tftpscript.sh")
+        self.print_text(output)
+        # TODO checking of output
+
 
 root = Tk.Tk()
 root.title("ROV Programming Software")

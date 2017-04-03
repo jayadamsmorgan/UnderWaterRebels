@@ -60,7 +60,7 @@
 int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 8, 177), remote_device;
+IPAddress ip(192, 168, 1, 177), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
 unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
