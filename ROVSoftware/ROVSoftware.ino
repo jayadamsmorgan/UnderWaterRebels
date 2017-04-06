@@ -7,30 +7,30 @@
 #include <ADXL345.h>
 #include <HMC5883L.h>
 
-#define MOTOR1PIN                5    // Some pin
-#define MOTOR2PIN                6    // Some pin
-#define MOTOR3PIN                3    // Some pin
-#define MOTOR4PIN                9    // Some pin
-#define MOTOR5PIN                11   // Some pin
-#define MOTOR6PIN                12   // Some pin
+#define MOTOR1PIN                11
+#define MOTOR2PIN                12
+#define MOTOR3PIN                13
+#define MOTOR4PIN                46
+#define MOTOR5PIN                45
+#define MOTOR6PIN                44
 
 #define MOTORLOWMICROSECONDS     1465
 #define MOTORHIGHMICROSECONDS    1510
 #define MOTORRANGE               400
 
-#define MAIN_MANIP_ROT_PINA      13   // Some pin
-#define MAIN_MANIP_ROT_PINB      14   // Some pin
-#define MAIN_MANIP_ROT_PINPWM    15   // Some pin
+#define MAIN_MANIP_ROT_PINA      75 
+#define MAIN_MANIP_ROT_PINB      14   
 
-#define MAIN_MANIP_TIGHT_PINA    16   // Some pin
-#define MAIN_MANIP_TIGHT_PINB    17   // Some pin
-#define MAIN_MANIP_TIGHT_PINPWM  18   // Some pin
+#define MAIN_MANIP_TIGHT_PINA    29   
+#define MAIN_MANIP_TIGHT_PINB    28      
 
-#define MULTIPLEXOR_PINA         19   // Some pin
-#define MULTIPLEXOR_PINB         20   // Some pin
+#define MULTIPLEXOR_PINA         77   
+#define MULTIPLEXOR_PINB         22   
 
-#define SERVO_MANIPULATOR_PIN    21   // Some pin
-#define SERVO_CAMERA_PIN         22   // Some pin
+#define LED_PIN                  26
+
+#define SERVO_MANIPULATOR_PIN    6   
+#define SERVO_CAMERA_PIN         7
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 
