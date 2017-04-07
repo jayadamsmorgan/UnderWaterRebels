@@ -42,9 +42,10 @@ class GUI:
             self.print_text("Hex file NOT found!")
             return
         self.print_text("Converting hex to binary...")
-        com.getoutput("avr-objcopy -I ihex ~/Documents/CompiledArduinoSketches/ROVSoftware.ino.hex "
-                      "-O binary ~/Documents/CompiledArduinoSketches/rov.bin")
-
+        com.getoutput("rm /Users/germanberdnikov/Documents/CompiledArduinoSketches/rov.bin")
+        com.getoutput("/Applications/Work/Programming/Arduino.app/Contents/Java/hardware/tools/avr/bin/avr-objcopy "
+                      "-I ihex ~/Documents/CompiledArduinoSketches/ROVSoftware.ino.hex -O binary "
+                      "~/Documents/CompiledArduinoSketches/rov.bin")
         output = com.getoutput("ls ~/Documents/CompiledArduinoSketches")
         output_array = output.splitlines()
         for i in output_array:

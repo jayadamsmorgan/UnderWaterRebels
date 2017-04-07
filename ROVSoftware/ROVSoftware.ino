@@ -18,18 +18,18 @@
 #define MOTORHIGHMICROSECONDS    1510
 #define MOTORRANGE               400
 
-#define MAIN_MANIP_ROT_PINA      75 
-#define MAIN_MANIP_ROT_PINB      14   
+#define MAIN_MANIP_ROT_PINA      9
+#define MAIN_MANIP_ROT_PINB      14
 
-#define MAIN_MANIP_TIGHT_PINA    29   
-#define MAIN_MANIP_TIGHT_PINB    28      
+#define MAIN_MANIP_TIGHT_PINA    29
+#define MAIN_MANIP_TIGHT_PINB    28
 
-#define MULTIPLEXOR_PINA         77   
-#define MULTIPLEXOR_PINB         22   
+#define MULTIPLEXOR_PINA         77
+#define MULTIPLEXOR_PINB         22
 
 #define LED_PIN                  26
 
-#define SERVO_MANIPULATOR_PIN    6   
+#define SERVO_MANIPULATOR_PIN    6
 #define SERVO_CAMERA_PIN         7
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
@@ -90,7 +90,7 @@ signed char js_val[5];
 bool buttons[8];
 
 // Auto modes
-bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = true;
+bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 
 // Mux channels
 unsigned char muxChannel = 0;
@@ -238,8 +238,8 @@ void autoPitch() {
   if (dir < 0) {
     pitchOutput = -abs(pitchOutput);
   }
-  // ........... 
-  
+  // ...........
+
   // Value correction:
   if (pitchOutput > 100.0) {
     pitchOutput = 100.0;
@@ -308,7 +308,7 @@ void autoYaw() {
     return;
   }
   // .......
-  
+
   Serial.print("AutoYaw PID output is: "); Serial.println(val);
   Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
   Serial.print("Current yaw is: ");        Serial.println(yaw);
@@ -373,7 +373,7 @@ char receiveMessage() {
     } else {
       botManipDir = 0;
     }
-    
+
     if (buttons[6] == 0 && buttons[7] == 0) {
       muxChannel = 0;
     } else if (buttons[6] == 0 && buttons[7] == 1) {
@@ -645,11 +645,11 @@ void selectMuxChannel() {
   if (muxChannel == 0) {
     digitalWrite(MULTIPLEXOR_PINA, LOW);
     digitalWrite(MULTIPLEXOR_PINB, LOW);
-  } 
+  }
   else if (muxChannel == 1) {
     digitalWrite(MULTIPLEXOR_PINA, HIGH);
     digitalWrite(MULTIPLEXOR_PINB, LOW);
-  } 
+  }
   else if (muxChannel == 2) {
     digitalWrite(MULTIPLEXOR_PINA, LOW);
     digitalWrite(MULTIPLEXOR_PINB, HIGH);
@@ -661,6 +661,7 @@ void loop() {
   updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
-    }
+  }
   controlPeripherals();
+
 }
