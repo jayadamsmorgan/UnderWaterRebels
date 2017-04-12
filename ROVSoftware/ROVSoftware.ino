@@ -7,6 +7,9 @@
 #include <ADXL345.h>
 #include <HMC5883L.h>
 
+typedef unsigned uint;
+typedef unsigned char uchar;
+
 #define MOTOR1PIN                11
 #define MOTOR2PIN                12
 #define MOTOR3PIN                13
@@ -18,13 +21,17 @@
 #define MOTORHIGHMICROSECONDS    1510
 #define MOTORRANGE               400
 
+#define HIGH_SPEED_K             1.0
+#define MID_SPEED_K              0.6
+#define LOW_SPEED_K              0.3
+
 #define MAIN_MANIP_ROT_PINA      9
 #define MAIN_MANIP_ROT_PINB      14
 
 #define MAIN_MANIP_TIGHT_PINA    29
 #define MAIN_MANIP_TIGHT_PINB    28
 
-#define MULTIPLEXOR_PINA         77
+#define MULTIPLEXOR_PINA         23
 #define MULTIPLEXOR_PINB         22
 
 #define LED_PIN                  26
@@ -42,20 +49,21 @@
 #define MAX_BOTTOM_MANIP_ANGLE   160  // ?
 #define MIN_BOTTOM_MANIP_ANGLE   100  // ?
 
-#define INCOMING_PACKET_SIZE     7
-#define OUTCOMING_PACKET_SIZE    10
+#define INCOMING_PACKET_SIZE     25
+#define OUTCOMING_PACKET_SIZE    13
 
-#define PITCH_KP                 2.0  // ?
-#define PITCH_KI                 0.0  // ?
-#define PITCH_KD                 0.0  // ?
+float PITCH_KP =               2.0;
+float PITCH_KI =               0.0;
+float PITCH_KD =               0.0;
 
-#define DEPTH_KP                 2.0  // ?
-#define DEPTH_KI                 0.0  // ?
-#define DEPTH_KD                 0.0  // ?
+float DEPTH_KP =               2.0;
+float DEPTH_KI =               0.0;
+float DEPTH_KD =               0.0;
 
-#define YAW_KP                   0.0001  // ?
-#define YAW_KI                   0.0  // ?
-#define YAW_KD                   0.0  // ?
+float YAW_KP1  =               0.0001;
+float YAW_KP   =               2.0;
+float YAW_KI   =               0.0;
+float YAW_KD   =               0.0;
 
 int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
@@ -92,6 +100,9 @@ bool buttons[8];
 // Auto modes
 bool isAutoDepth = false, isAutoPitch = false, isAutoYaw = false;
 
+// LED switch
+bool isLED = false;
+
 // Mux channels
 unsigned char muxChannel = 0;
 
@@ -107,7 +118,7 @@ PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, 
 double depthSetpoint, depthInput, depthOutput;
 PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD, DIRECT);
 double yawSetpoint, yawInput, yawOutput;
-PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRECT);
+PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP1, YAW_KI, YAW_KD, DIRECT);
 
 // Function for controlling motor system
 void controlPeripherals() {
@@ -183,6 +194,8 @@ void controlPeripherals() {
   prev_manip_servo_update = millis();
 
   selectMuxChannel();
+
+  switchLED();
 }
 
 // AutoPitch & AutoDepth mode
@@ -304,9 +317,7 @@ void autoYaw() {
   if (dir < 0) {
     val += yawSetpoint / 2;
   }
-  if (abs(val) > 100) {
-    return;
-  }
+  val *= YAW_KP;
   // .......
 
   Serial.print("AutoYaw PID output is: "); Serial.println(val);
@@ -388,33 +399,72 @@ char receiveMessage() {
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
 
-    Serial.print("bit1: "); Serial.println(bit1);
-    Serial.print("bit2: "); Serial.println(bit2);
-    Serial.print("bit3: "); Serial.println(bit3);
-
     if (bit1 == 1) {
-      speedK = 1.00;
-    }
-    if (bit2 == 1) {
-      speedK = 0.60;
-    }
-    if (bit3 == 1) {
-      speedK = 0.30;
+      Serial.println("Using high-speed mode");
+      speedK = HIGH_SPEED_K;
+    } else if (bit2 == 1) {
+      Serial.println("Using mid-speed mode");
+      speedK = MID_SPEED_K;
+    } else if (bit3 == 1) {
+      Serial.println("Using low-speed mode");
+      speedK = LOW_SPEED_K;
+    } else {
+      Serial.println("Using mid-speed mode");
+      speedK = MID_SPEED_K;
     }
 
-    isAutoDepth = (packetBuffer[6] >> 3) & 1;
-    Serial.println(isAutoDepth);
-    isAutoPitch = (packetBuffer[6] >> 4) & 1;
-    Serial.println(isAutoPitch);
+    isAutoPitch = (packetBuffer[6] >> 3) & 1;
+    isAutoDepth = (packetBuffer[6] >> 4) & 1;
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
-    Serial.println(isAutoYaw);
+
+    isLED = (packetBuffer[6] >> 6) & 1;
+    Serial.print("isLED: "); Serial.println(isLED);
+
+    getK();
+    setK();
 
     return 1;
-  }
-  else {
-    //Serial.println("Size is incorrect.");
+  } else {
     return 0;
   }
+}
+
+// Function to get koefficients from packetBuffer
+void getK() {
+  uint num = (static_cast<uint>(static_cast<uchar>(packetBuffer[8])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[7]));
+  YAW_KP = (float) num / 10000;
+  Serial.print("YP: "); Serial.print(YAW_KP); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[10])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[9]));
+  YAW_KI = (float) num / 10000;
+  Serial.print("YI: "); Serial.print(YAW_KI); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[12])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[11]));
+  YAW_KD = (float) num / 10000;
+  Serial.print("YD: "); Serial.print(YAW_KD); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[14])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[13]));
+  PITCH_KP = (float) num / 10000;
+  Serial.print("PP: "); Serial.print(PITCH_KP); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[16])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[15]));
+  PITCH_KI = (float) num / 10000;
+  Serial.print("PI: "); Serial.print(PITCH_KI); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[18])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[17]));
+  PITCH_KD = (float) num / 10000;
+  Serial.print("PD: "); Serial.print(PITCH_KD); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[20])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[19]));
+  DEPTH_KP = (float) num / 10000;
+  Serial.print("DP: "); Serial.print(DEPTH_KP); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[22])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[21]));
+  DEPTH_KI = (float) num / 10000;
+  Serial.print("DI: "); Serial.print(DEPTH_KI); Serial.print(", ");
+  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[24])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[23]));
+  DEPTH_KD = (float) num / 10000;
+  Serial.print("DD: "); Serial.print(DEPTH_KD); Serial.println();
+}
+
+// Function to set values for PIDs
+void setK() {
+  autoPitchPID.SetTunings(PITCH_KP, PITCH_KI, PITCH_KD);
+  autoYawPID.SetTunings(YAW_KP1, YAW_KI, YAW_KD);
+  autoDepthPID.SetTunings(DEPTH_KP, DEPTH_KI, DEPTH_KD);
 }
 
 // Forming & sending packet to PC via UDP
@@ -422,18 +472,21 @@ void sendReply() {
   Serial.print("PC is on :"); Serial.println(remote_device);
 
   Serial.println("Forming packet...");
-  replyBuffer[0] = ((int) (yaw * 100.00) >> 8) & 0xFF;
-  replyBuffer[1] = ((int) (yaw * 100.00)) & 0xFF;
-  replyBuffer[2] = ((int) (pitch * 100.00) >> 8) & 0xFF;
-  replyBuffer[3] = ((int) (pitch * 100.00)) & 0xFF;
-  replyBuffer[4] = ((int) (roll * 100.00) >> 8) & 0xFF;
-  replyBuffer[5] = ((int) (roll * 100.00)) & 0xFF;
-  replyBuffer[6] = ((int) (depth * 100.00) >> 8) & 0xFF;
-  replyBuffer[7] = ((int) (depth * 100.00)) & 0xFF;
+  replyBuffer[0]  = ((int) (yaw * 100.00) >> 8) & 0xFF;
+  replyBuffer[1]  = ((int) (yaw * 100.00)) & 0xFF;
+  replyBuffer[2]  = ((int) (pitch * 100.00) >> 8) & 0xFF;
+  replyBuffer[3]  = ((int) (pitch * 100.00)) & 0xFF;
+  replyBuffer[4]  = ((int) (roll * 100.00) >> 8) & 0xFF;
+  replyBuffer[5]  = ((int) (roll * 100.00)) & 0xFF;
+  replyBuffer[6]  = ((int) (depth * 100.00) >> 8) & 0xFF;
+  replyBuffer[7]  = ((int) (depth * 100.00)) & 0xFF;
+  replyBuffer[8]  = ((int) (yawSetpoint * 100.00) >> 8) & 0xFF;
+  replyBuffer[9]  = ((int) (yawSetpoint * 100.00)) & 0xFF;
+  replyBuffer[10] = ((int) (depthSetpoint * 100.00) >> 8 ) & 0xFF;
+  replyBuffer[11] = ((int) (depthSetpoint * 100.00)) & 0xFF;
   for (int i = 0; i < 8; ++i) {
-    replyBuffer[8] |= leak[i] << i;
+    replyBuffer[12] |= leak[i] << i;
   }
-  //replyBuffer[9] = ...
 
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
@@ -616,8 +669,6 @@ void updateYPR() {
     fpitcharray[i] = -(atan2(faccl.XAxis, sqrt(faccl.YAxis  * faccl.YAxis + faccl.ZAxis * faccl.ZAxis)) * 180.0) / M_PI;
     frollarray[i] = (atan2(faccl.YAxis, faccl.ZAxis) * 180.0) / M_PI;
   }
-
-
   for (int i = 0; i < (10 - 1); i++) {
     for (int o = 0; o < (10 - (i + 1)); o++) {
       if (fpitcharray[o] > fpitcharray[o + 1]) {
@@ -656,6 +707,16 @@ void selectMuxChannel() {
   }
 }
 
+void switchLED() {
+  if (isLED) {
+    digitalWrite(LED_PIN, HIGH);
+  } else {
+    digitalWrite(LED_PIN, LOW);
+  }
+}
+
+// Function to update
+
 void loop() {
   updateYPR();
   updateDepth();
@@ -663,5 +724,4 @@ void loop() {
     sendReply();
   }
   controlPeripherals();
-
 }
