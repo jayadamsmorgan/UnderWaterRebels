@@ -75,7 +75,7 @@ EthernetUDP Udp;
 
 ADXL345 accelerometer;
 HMC5883L compass;
-MS5803 sensor(ADDRESS_LOW);
+MS5803 sensor(ADDRESS_HIGH);
 
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
@@ -270,11 +270,23 @@ void autoPitch() {
 
 // AutoDepth mode
 void autoDepth() {
-  depthInput = depth;
+  depthSetpoint = -40;
+  depthInput = depthSetpoint - depth;
+  signed char dir = 0;
+  if (depthInput > 0) {
+    dir = 1;
+  } else {
+    dir = -1;
+  }
+  depthInput = -abs(depthInput);
   autoDepthPID.Compute();
   Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
   Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
   Serial.print("Current depth is: ");        Serial.println(depth);
+
+  if (dir < 0) {
+    depthOutput = -abs(depthOutput);
+  }
 
   // Value correction:
   if (depthOutput > 100.0) {
@@ -619,7 +631,7 @@ void updateDepth() {
   // Read pressure from the sensor in mbar & filter it
   int pressureReadings[10];
   for (int i = 0; i < 10; i++) {
-    pressureReadings[i] = sensor.getPressure(ADC_4096);
+    pressureReadings[i] = sensor.getPressure(ADC_256);
   }
   for (int i = 0; i < (10 - 1); i++) {
     for (int o = 0; o < (10 - (i + 1)); o++) {
