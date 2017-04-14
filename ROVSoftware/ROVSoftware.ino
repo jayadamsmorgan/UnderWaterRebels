@@ -732,10 +732,10 @@ void switchLED() {
 // Function to update
 
 void loop() {
-  updateYPR();
+  //updateYPR();
   //updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
-  controlPeripherals();
+  //controlPeripherals();
 }
