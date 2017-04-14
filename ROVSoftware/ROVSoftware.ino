@@ -582,6 +582,8 @@ void tightenManipulator(char dir) {
 void setup() {
   // Init I2C connection for IMU
   Wire.begin();
+
+  // Init serial port for debugging
   Serial.begin(250000);
 
   // Init brushless motors
@@ -731,7 +733,7 @@ void switchLED() {
 
 void loop() {
   updateYPR();
-  updateDepth();
+  //updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
