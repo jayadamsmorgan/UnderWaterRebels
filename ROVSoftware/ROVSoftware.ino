@@ -193,17 +193,15 @@ void controlPeripherals() {
   bottomManip.write(bottom_manip_angle);
   prev_manip_servo_update = millis();
 
+  // Select multiplexor channel for right video out
   selectMuxChannel();
 
+  // Switch on/off LED
   switchLED();
 }
 
 // AutoPitch & AutoDepth mode
 void autoPitchAndDepth() {
-  // Preserving ROV from motor work on the surface
-  if (depth == 0.0) {
-    return;
-  }
 
   depthInput = depth;
   pitchInput = rotationAngle(pitch, 0);
@@ -364,6 +362,8 @@ char receiveMessage() {
     Serial.println("Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
+
+    // STARTING PARSING PACKET ********
     for (int i = 0; i < 5; ++i)  {
       js_val[i] = (signed char)packetBuffer[i];
       Serial.print("js"); Serial.print(i); Serial.print(": "); Serial.println(js_val[i]);
@@ -373,51 +373,49 @@ char receiveMessage() {
       Serial.print("btn"); Serial.print(i); Serial.print(": "); Serial.println(buttons[i]);
     }
 
-    if (buttons[0] == 1 && buttons[1] == 0) {
+    if (buttons[0] == 0 && buttons[1] == 1) {
       servoCamDir = -1;
-    } else if (buttons[0] == 0 && buttons[1] == 1) {
+    } else if (buttons[0] == 1 && buttons[1] == 0) {
       servoCamDir = 1;
     } else {
       servoCamDir = 0;
     }
 
-    if (buttons[2] == 1 && buttons[3] == 0) {
+    if (buttons[2] == 0 && buttons[3] == 1) {
       manTightDir = -1;
-    } else if (buttons[2] == 0 && buttons[3] == 1) {
+    } else if (buttons[2] == 1 && buttons[3] == 0) {
       manTightDir = 1;
     } else {
       manTightDir = 0;
     }
 
-    if (buttons[4] == 1 && buttons[5] == 0) {
+    if (buttons[4] == 0 && buttons[5] == 1) {
       botManipDir = -1;
-    } else if (buttons[4] == 0 && buttons[5] == 1) {
+    } else if (buttons[4] == 1 && buttons[5] == 0) {
       botManipDir = 1;
     } else {
       botManipDir = 0;
     }
 
-    if (buttons[6] == 0 && buttons[7] == 0) {
+    if (buttons[6] == 0 && buttons[7] == 1) {
       muxChannel = 0;
-    } else if (buttons[6] == 0 && buttons[7] == 1) {
-      muxChannel = 1;
     } else if (buttons[6] == 1 && buttons[7] == 0) {
-      muxChannel = 2;
+      muxChannel = 1;
     } else {
-      muxChannel = 3;
+      muxChannel = 0;
     }
 
     char bit1 = (packetBuffer[6]) & 1;
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
 
-    if (bit1 == 1) {
+    if (bit1) {
       Serial.println("Using high-speed mode");
       speedK = HIGH_SPEED_K;
-    } else if (bit2 == 1) {
+    } else if (bit2) {
       Serial.println("Using mid-speed mode");
       speedK = MID_SPEED_K;
-    } else if (bit3 == 1) {
+    } else if (bit3) {
       Serial.println("Using low-speed mode");
       speedK = LOW_SPEED_K;
     } else {
@@ -433,6 +431,8 @@ char receiveMessage() {
     Serial.print("isLED: "); Serial.println(isLED);
 
     getK();
+    // ENDING PARSING PACKET ********
+
     setK();
 
     return 1;
@@ -443,6 +443,7 @@ char receiveMessage() {
 
 // Function to get koefficients from packetBuffer
 void getK() {
+  // Some bad coding)))
   uint num = (static_cast<uint>(static_cast<uchar>(packetBuffer[8])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[7]));
   YAW_KP = (float) num / 10000;
   Serial.print("YP: "); Serial.print(YAW_KP); Serial.print(", ");
@@ -490,12 +491,12 @@ void sendReply() {
   replyBuffer[3]  = ((int) (pitch * 100.00)) & 0xFF;
   replyBuffer[4]  = ((int) (roll * 100.00) >> 8) & 0xFF;
   replyBuffer[5]  = ((int) (roll * 100.00)) & 0xFF;
-  replyBuffer[6]  = ((int) (depth * 100.00) >> 8) & 0xFF;
-  replyBuffer[7]  = ((int) (depth * 100.00)) & 0xFF;
+  replyBuffer[6]  = ((int) (depth) >> 8) & 0xFF;
+  replyBuffer[7]  = ((int) (depth)) & 0xFF;
   replyBuffer[8]  = ((int) (yawSetpoint * 100.00) >> 8) & 0xFF;
   replyBuffer[9]  = ((int) (yawSetpoint * 100.00)) & 0xFF;
-  replyBuffer[10] = ((int) (depthSetpoint * 100.00) >> 8 ) & 0xFF;
-  replyBuffer[11] = ((int) (depthSetpoint * 100.00)) & 0xFF;
+  replyBuffer[10] = ((int) (depthSetpoint) >> 8 ) & 0xFF;
+  replyBuffer[11] = ((int) (depthSetpoint)) & 0xFF;
   for (int i = 0; i < 8; ++i) {
     replyBuffer[12] |= leak[i] << i;
   }
@@ -579,6 +580,7 @@ void tightenManipulator(char dir) {
   }
 }
 
+// Setup function
 void setup() {
   // Init I2C connection for IMU
   Wire.begin();
@@ -649,7 +651,7 @@ void updateDepth() {
 
   // Taking our baseline pressure at the beginning we can find an approximate
   // change in altitude based on the differences in pressure.
-  depth = altitude(pressure_abs , pressure_baseline);
+  depth = altitude(pressure_abs, pressure_baseline);
 }
 
 // Given a pressure measurement P (mbar) and the pressure at a baseline P0 (mbar),
@@ -675,16 +677,16 @@ void updateYPR() {
   yaw = yaw * 180 / M_PI;
 
   // Reading accelerometer values from IMU; calculating & filtering (median filter) pitch & roll
-  double fpitcharray[10];
-  double frollarray[10];
+  double fpitcharray[5];
+  double frollarray[5];
   for (int i = 0; i < 10; i++) {
     Vector accl = accelerometer.readNormalize();
     Vector faccl = accelerometer.lowPassFilter(accl, 0.5);
     fpitcharray[i] = -(atan2(faccl.XAxis, sqrt(faccl.YAxis  * faccl.YAxis + faccl.ZAxis * faccl.ZAxis)) * 180.0) / M_PI;
     frollarray[i] = (atan2(faccl.YAxis, faccl.ZAxis) * 180.0) / M_PI;
   }
-  for (int i = 0; i < (10 - 1); i++) {
-    for (int o = 0; o < (10 - (i + 1)); o++) {
+  for (int i = 0; i < (5 - 1); i++) {
+    for (int o = 0; o < (5 - (i + 1)); o++) {
       if (fpitcharray[o] > fpitcharray[o + 1]) {
         int t = fpitcharray[o];
         fpitcharray[o] = fpitcharray[o + 1];
@@ -692,8 +694,8 @@ void updateYPR() {
       }
     }
   }
-  for (int i = 0; i < (10 - 1); i++) {
-    for (int o = 0; o < (10 - (i + 1)); o++) {
+  for (int i = 0; i < (5 - 1); i++) {
+    for (int o = 0; o < (5 - (i + 1)); o++) {
       if (frollarray[o] > frollarray[o + 1]) {
         int t = frollarray[o];
         frollarray[o] = frollarray[o + 1];
@@ -702,25 +704,23 @@ void updateYPR() {
     }
   }
 
-  pitch = fpitcharray[4];
-  roll = frollarray[4];
+  pitch = fpitcharray[2];
+  roll = frollarray[2];
 }
 
+// Function to select right multiplexor channel
 void selectMuxChannel() {
   if (muxChannel == 0) {
     digitalWrite(MULTIPLEXOR_PINA, LOW);
-    digitalWrite(MULTIPLEXOR_PINB, LOW);
+    digitalWrite(MULTIPLEXOR_PINB, HIGH);
   }
   else if (muxChannel == 1) {
     digitalWrite(MULTIPLEXOR_PINA, HIGH);
     digitalWrite(MULTIPLEXOR_PINB, LOW);
   }
-  else if (muxChannel == 2) {
-    digitalWrite(MULTIPLEXOR_PINA, LOW);
-    digitalWrite(MULTIPLEXOR_PINB, HIGH);
-  }
 }
 
+// Function to switch off/on LED
 void switchLED() {
   if (isLED) {
     digitalWrite(LED_PIN, HIGH);
@@ -729,13 +729,12 @@ void switchLED() {
   }
 }
 
-// Function to update
-
+// Loop function
 void loop() {
-  //updateYPR();
-  //updateDepth();
+  updateYPR();
+  updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
-  //controlPeripherals();
+  controlPeripherals();
 }
