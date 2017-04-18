@@ -20,14 +20,20 @@ public:
     ~MainWindow();
     void setpalprop();
     QCamera *camera;
+    QCamera *camera2;
     QPixmap *red;
     QPixmap *green;
     QPalette *okauto;
     QPalette *noauto;
+protected:
+    void paintEvent(QPaintEvent *);
 private:
     Ui::MainWindow *ui;
 public slots:
-    void onupdateInfo(int ping,int depth,int speed,bool connection,bool yaw,bool pitch,bool roll);
+    void onupdateInfo(int cam2id,int depth,int speed,int yaw,int pitch,int roll,bool connection,bool ayaw,bool apitch,bool aroll,bool leak);
+    void replugJoy(bool trig);
+    void replugCams(bool trig);
+    void openDebugWindow(bool trig);
 
 };
 

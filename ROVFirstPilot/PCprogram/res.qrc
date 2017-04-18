@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>Red.png</file>
         <file>Green.png</file>
+        <file>ROVsettings.txt</file>
     </qresource>
 </RCC>

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <SDL.h>
+#include <QFile>
 #include "dudp.h"
 
 class Worker : public QObject
@@ -27,7 +28,7 @@ public:
     void parsePacket();
     void uinformation();
 signals:
-    void updateInfo(int ping,int depth,int speed,bool connection,bool yaw,bool pitch,bool roll);
+    void updateInfo(int cam2id,int depth,int speed,int yaw,int pitch,int roll,bool connection,bool ayaw,bool apitch,bool aroll,bool leak);
 
 public slots:
     void onTimeOut();

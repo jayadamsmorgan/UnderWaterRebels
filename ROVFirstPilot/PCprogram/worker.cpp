@@ -2,6 +2,10 @@
 
 QHostAddress kulebyaka("192.168.8.177");
 quint16 port = 8000;
+double koefs[9];
+int axs[3];
+int cam2id;
+bool leak;
 
 Worker::Worker(QObject *parent) : QObject(parent)
 {
@@ -14,10 +18,28 @@ Worker::Worker(QObject *parent) : QObject(parent)
 
     kulpack = new int[6];
     speedMode = 0;
+    cam2id = 0;
+    leak = false;
     AP = 0;
     AD = 0;
     AY = 0;
+
     qDebug() <<"we entered worker \n";
+
+
+    QFile kfile("ROVsettings.txt");
+    if(kfile.open(QIODevice::ReadOnly))
+    {
+        QTextStream stream(&kfile);
+
+        for(int i = 0; i < 9;++i)
+        {
+          stream >> koefs[i] ;
+
+        }
+
+    }
+
 }
 
 
@@ -47,7 +69,7 @@ void Worker::uinformation()
     ping = 0;
     depth = 0;
 
-    emit updateInfo(ping,depth,speedMode,Veichle->state,AY,AP,AD);
+    emit updateInfo(cam2id,depth,speedMode,axs[0],axs[1],axs[2],Veichle->state,AY,AP,AD,leak);
 
 }
 void Worker::formPacket()
@@ -99,7 +121,7 @@ void Worker::formPacket()
     {
         if(speedMode == 2) speedMode = 0;
         else ++speedMode;
-
+    }
         switch(speedMode)
         {
             case 0:
@@ -122,11 +144,19 @@ void Worker::formPacket()
                 button = button<<1|0;
                 button = button<<1|0;
         }
-    }
+
 
     output.append(button);
-    //for(int i = 0; i < output.size();++i)
-    //{
+
+    for(int i = 0; i < 9;++i)
+    {
+        int tmp = (int)(koefs[i]*1000);
+        //qDebug()<< tmp;
+        output.append((char)(tmp>>8));
+        output.append((char)((tmp<<8)>>8));
+        //qDebug()<<(int)output[output.size()-1] <<  " " << (int)output[output.size()-2];
+    }
+    qDebug() << output.size();
 
 }
 
