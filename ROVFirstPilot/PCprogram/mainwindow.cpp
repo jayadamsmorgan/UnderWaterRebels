@@ -43,12 +43,13 @@ MainWindow::MainWindow(QWidget *parent) :
     }
 }
 
-void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pitch, int roll, bool connection, bool ayaw, bool apitch, bool aroll, bool leak)
+void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pitch, int roll, int setyaw, int setpitch, bool connection, bool ayaw, bool apitch, bool adepth, bool leak)
 {
     ui->depth->setText("Depth: " + QString::number(depth));
+    ui->setdepth->setText("-> " + QString::number(setpitch));
     //ui->ping->setText("Ping: " + QString::number(ping));
     cam2num = cam2id;
-
+    qDebug()<<ayaw << " " << apitch;
     switch(speed)
     {
         case 0:
@@ -74,7 +75,7 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
     else ui->ayaw->setPalette(*noauto);
     if(apitch) ui->apitch->setPalette(*okauto);
     else ui->apitch->setPalette(*noauto);
-    if(aroll) ui->adepth->setPalette(*okauto);
+    if(adepth) ui->adepth->setPalette(*okauto);
     else ui->adepth->setPalette(*noauto);
 
 }

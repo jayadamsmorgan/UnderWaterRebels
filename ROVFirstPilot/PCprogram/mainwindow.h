@@ -30,7 +30,7 @@ protected:
 private:
     Ui::MainWindow *ui;
 public slots:
-    void onupdateInfo(int cam2id,int depth,int speed,int yaw,int pitch,int roll,bool connection,bool ayaw,bool apitch,bool aroll,bool leak);
+    void onupdateInfo(int cam2id, int depth, int speed, int yaw, int pitch, int roll,int setyaw,int setpitch, bool connection, bool ayaw, bool apitch, bool adepth, bool leak);
     void replugJoy(bool trig);
     void replugCams(bool trig);
     void openDebugWindow(bool trig);

@@ -28,7 +28,7 @@ public:
     void parsePacket();
     void uinformation();
 signals:
-    void updateInfo(int cam2id,int depth,int speed,int yaw,int pitch,int roll,bool connection,bool ayaw,bool apitch,bool aroll,bool leak);
+    void updateInfo(int cam2id,int depth,int speed,int yaw,int pitch,int roll,int yawsetpoint,int pitchsetpoint,bool connection,bool ayaw,bool apitch,bool adepth,bool leak);
 
 public slots:
     void onTimeOut();
