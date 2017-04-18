@@ -41,11 +41,11 @@ typedef unsigned char uchar;
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 
-#define CAMERA_ANGLE_DELTA       3    // ?
-#define MIN_CAMERA_ANGLE         0    // ?
-#define MAX_CAMERA_ANGLE         160  // ?
+#define CAMERA_ANGLE_DELTA       3
+#define MIN_CAMERA_ANGLE         40
+#define MAX_CAMERA_ANGLE         160
 
-#define BOTTOM_MANIP_ANGLE_DELTA 3    // ?
+#define BOTTOM_MANIP_ANGLE_DELTA 3
 #define MAX_BOTTOM_MANIP_ANGLE   160  // ?
 #define MIN_BOTTOM_MANIP_ANGLE   100  // ?
 
