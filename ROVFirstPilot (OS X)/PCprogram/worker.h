@@ -2,7 +2,7 @@
 #define WORKER_H
 
 #include <QObject>
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <QFile>
 #include "dudp.h"
 
