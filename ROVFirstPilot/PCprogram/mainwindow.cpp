@@ -49,7 +49,7 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
     ui->setdepth->setText("-> " + QString::number(setpitch));
     //ui->ping->setText("Ping: " + QString::number(ping));
     cam2num = cam2id;
-    qDebug()<<ayaw << " " << apitch;
+    qDebug()<<cam2id;
     switch(speed)
     {
         case 0:
@@ -162,7 +162,7 @@ void MainWindow::replugCams(bool trig)
 
 void MainWindow::replugJoy(bool trig)
 {
-
+    emit updateJoy();
 }
 
 void MainWindow::openDebugWindow(bool trig)

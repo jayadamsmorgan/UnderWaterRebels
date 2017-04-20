@@ -1,6 +1,6 @@
 #include "worker.h"
 
-QHostAddress kulebyaka("192.168.8.177");
+QHostAddress kulebyaka("192.168.1.177");
 quint16 port = 8000;
 double koefs[9];
 int axs[3];
@@ -84,7 +84,7 @@ void Worker::uinformation()
     ping = 0;
     depth = 0;
 
-    emit updateInfo(cam2id,depth,speedMode,axs[0],axs[1],axs[2],yawsetpoint,pitchsetpoint,Veichle->state,AY,AP,AD,leak);
+    emit updateInfo(cam2id,depth,speedMode,axs[0],axs[1],axs[2],yawsetpoint,pitchsetpoint,Veichle->state,AY,AD,AP,leak);
 
 }
 void Worker::formPacket()
@@ -199,3 +199,15 @@ void Worker::formPacket()
 
 }
 
+
+void Worker::onUpdateJoy()
+{
+    SDL_JoystickClose(joy);
+
+    SDL_Quit();
+    qDebug() << "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssss";
+    event = new SDL_Event;
+    SDL_Init(SDL_INIT_JOYSTICK);
+    SDL_JoystickEventState(SDL_ENABLE);
+    joy = SDL_JoystickOpen(0);
+}

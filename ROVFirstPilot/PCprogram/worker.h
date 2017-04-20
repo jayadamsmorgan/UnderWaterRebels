@@ -32,6 +32,7 @@ signals:
 
 public slots:
     void onTimeOut();
+    void onUpdateJoy();
 };
 
 #endif // WORKER_H

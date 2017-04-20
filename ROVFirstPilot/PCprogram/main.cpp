@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 
     QObject::connect(&timer,SIGNAL(timeout()),&worker,SLOT(onTimeOut()));
     QObject::connect(&worker,SIGNAL(updateInfo(int,int,int,int,int,int,int,int,bool,bool,bool,bool,bool)),&w,SLOT(onupdateInfo(int,int,int,int,int,int,int,int,bool,bool,bool,bool,bool)));
+    QObject::connect(&w,SIGNAL(updateJoy()),&worker,SLOT(onUpdateJoy()));
     timer.start(200);
 
     timer.moveToThread(&thread);
