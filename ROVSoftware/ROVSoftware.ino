@@ -31,7 +31,7 @@ typedef unsigned char uchar;
 #define MAIN_MANIP_TIGHT_PINA    29
 #define MAIN_MANIP_TIGHT_PINB    28
 
-#define MULTIPLEXOR_PINA         23
+#define MULTIPLEXOR_PINA         24
 #define MULTIPLEXOR_PINB         22
 
 #define LED_PIN                  26
@@ -662,11 +662,24 @@ double altitude(double P, double P0) {
 
 // Function for updating yaw, pitch, roll
 void updateYPR() {
+  double prevyaw = yaw;
   // Reading magnetometer values from IMU
-  Vector mag = compass.readNormalize();
-
-  // Calculating yaw
-  yaw = atan2(mag.YAxis, mag.XAxis);
+  double fyawarray[5];
+  for (int i = 0; i < 5; i++) {
+    Vector mag = compass.readNormalize();
+    // Calculating yaw
+    fyawarray[i] = atan2(mag.YAxis, mag.XAxis);
+  }
+  for (int i = 0; i < (5 - 1); i++) {
+    for (int o = 0; o < (5 - (i + 1)); o++) {
+      if (fyawarray[o] > fyawarray[o + 1]) {
+        int t = fyawarray[o];
+        fyawarray[o] = fyawarray[o + 1];
+        fyawarray[o + 1] = t;
+      }
+    }
+  }
+  yaw = fyawarray[2];
   yaw += declinationAngle;
   if (yaw < 0) {
     yaw += 2 * PI;
@@ -675,11 +688,14 @@ void updateYPR() {
     yaw -= 2 * PI;
   }
   yaw = yaw * 180 / M_PI;
+  if (yaw > 4.42 && yaw < 4.44) {
+    yaw = prevyaw; 
+  }
 
   // Reading accelerometer values from IMU; calculating & filtering (median filter) pitch & roll
   double fpitcharray[5];
   double frollarray[5];
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 5; i++) {
     Vector accl = accelerometer.readNormalize();
     Vector faccl = accelerometer.lowPassFilter(accl, 0.5);
     fpitcharray[i] = -(atan2(faccl.XAxis, sqrt(faccl.YAxis  * faccl.YAxis + faccl.ZAxis * faccl.ZAxis)) * 180.0) / M_PI;
