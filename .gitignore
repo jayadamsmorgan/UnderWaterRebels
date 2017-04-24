@@ -1,0 +1,6 @@
+
+*.user
+*.iml
+*.bat
+*gradle*
+*SDL*

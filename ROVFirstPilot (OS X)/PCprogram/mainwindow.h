@@ -34,6 +34,8 @@ public slots:
     void replugJoy(bool trig);
     void replugCams(bool trig);
     void openDebugWindow(bool trig);
+signals:
+    void updateJoy();
 
 };
 

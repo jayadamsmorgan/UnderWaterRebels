@@ -9,20 +9,22 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 class Main extends ApplicationAdapter {
 	SpriteBatch batch;
 	Texture img;
-	
+
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
 		img = new Texture("badlogic.jpg");
-		final Thread udpThread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				UDP udp = new UDP("192.168.1.106", 8000);
-                udp.sendMessage("5".getBytes());
-			}
-		});
-        udpThread.start();
 	}
+
+	@Override
+    public void resume() {
+
+    }
+
+	@Override
+    public void pause() {
+
+    }
 
 	@Override
 	public void render () {
@@ -39,3 +41,4 @@ class Main extends ApplicationAdapter {
 		img.dispose();
 	}
 }
+
