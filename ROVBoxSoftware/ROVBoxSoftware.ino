@@ -47,6 +47,7 @@ void setup() {
   pinMode(pinV, INPUT);
   pinMode(pinPWM_OUT, OUTPUT);
   attachInterrupt(0, rpm_fan, FALLING);
+  digitalWrite(3, HIGH);
 
   // Display init
   lcd.init();
