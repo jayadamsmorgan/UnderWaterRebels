@@ -5,6 +5,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+/**
+ *     UDP Thread for UDP connection with ROVFirstPilot program (see in "UnderwaterRebels" GitHub)...
+ */
+
 class UDPThread extends Thread {
 
     private boolean isRunning;
@@ -12,16 +16,20 @@ class UDPThread extends Thread {
     private byte data[];
     private int ip1 = 192, ip2 = 168, ip3 = 1, ip4 = 124;
     private int packet_size = 7;
+    private int serverPort = 8001;
 
     UDPThread() {
+        // Init some vars...
         isRunning = true;
         data = new byte[packet_size];
     }
 
+    // Function for toggling on/off udp connection
     void setRunning(boolean isRunning) {
         this.isRunning = isRunning;
     }
 
+    // Function for setting up byte array that we would send to PC
     void setData(int xAxis, int yAxis, int zAxis, int rAxis, int wAxis,
                  int rotCam, int manTight, int botMan, int speedMode, int muxChannel,
                  boolean isAutoYaw, boolean isAutoPitch, boolean isAutoDepth, boolean isLED) {
@@ -77,7 +85,7 @@ class UDPThread extends Thread {
     @Override
     public void run() {
         try {
-            int serverPort = 8001;
+            // Just sending byte array over UDP...
             socket = new DatagramSocket(serverPort);
             InetAddress address = InetAddress.getByAddress(new byte[]{(byte) ip1, (byte) ip2, (byte) ip3, (byte) ip4});
             while (true) {
