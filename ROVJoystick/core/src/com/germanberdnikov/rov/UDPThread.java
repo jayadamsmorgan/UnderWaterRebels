@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.util.BitSet;
 
 class UDPThread extends Thread {
 
@@ -13,10 +11,11 @@ class UDPThread extends Thread {
     private DatagramSocket socket;
     private byte data[];
     private int ip1 = 192, ip2 = 168, ip3 = 1, ip4 = 124;
+    private int packet_size = 7;
 
     UDPThread() {
         isRunning = true;
-        data = new byte[7];
+        data = new byte[packet_size];
     }
 
     void setRunning(boolean isRunning) {
@@ -24,8 +23,8 @@ class UDPThread extends Thread {
     }
 
     void setData(int xAxis, int yAxis, int zAxis, int rAxis, int wAxis,
-                 int rotCam, int manTight, int botMan, int speedMode,
-                 boolean isAutoYaw, boolean isAutoPitch, boolean isAutoDepth) {
+                 int rotCam, int manTight, int botMan, int speedMode, int muxChannel,
+                 boolean isAutoYaw, boolean isAutoPitch, boolean isAutoDepth, boolean isLED) {
         // Values are from -100 to 100, so we can use 1 byte to send every axis
         data[0] = (byte) xAxis;
         data[1] = (byte) yAxis;
@@ -33,48 +32,46 @@ class UDPThread extends Thread {
         data[3] = (byte) rAxis;
         data[4] = (byte) wAxis;
 
-        // UNTESTED YET
-        BitSet bitSet = new BitSet(1);
         if (rotCam < 0) {
-            bitSet.set(1, true);
-            data[5] = bitToByte(bitSet, 7);
-            bitSet.set(1, false);
-            data[5] = bitToByte(bitSet, 6);
+            data[5] |= (byte) 0b00000001;
         } else if (rotCam > 0) {
-
-        } else {
-
+            data[5] |= (byte) 0b00000010;
         }
         if (manTight < 0) {
-
+            data[5] |= (byte) 0b00000100;
         } else if (manTight > 0) {
-
-        } else {
-
+            data[5] |= (byte) 0b00001000;
         }
         if (botMan < 0) {
-
+            data[5] |= (byte) 0b00010000;
         } else if (botMan > 0) {
-
-        } else {
-
+            data[5] |= (byte) 0b00100000;
         }
-        if (speedMode == 1) {
+        if (muxChannel == 0) {
+            data[5] |= (byte) 0b01000000;
+        } else if (muxChannel == 1) {
+            data[5] |= (byte) 0b10000000;
+        }
 
+        if (speedMode == 3) {
+            data[6] |= (byte) 0b00000001;
         } else if (speedMode == 2) {
-
-        } else if (speedMode == 3) {
-
+            data[6] |= (byte) 0b00000010;
+        } else if (speedMode == 1) {
+            data[6] |= (byte) 0b00000100;
         }
-
-    }
-
-    private static byte bitToByte(BitSet bits, int offset) {
-        byte value = 0;
-        for (int i = offset; (i < bits.length() && ((i + offset) < 8)); ++i) {
-            value += bits.get(i) ? (1 << i) : 0;
+        if (isAutoYaw) {
+            data[6] |= (byte) 0b00001000;
         }
-        return value;
+        if (isAutoPitch) {
+            data[6] |= (byte) 0b00010000;
+        }
+        if (isAutoDepth) {
+            data[6] |= (byte) 0b00100000;
+        }
+        if (isLED) {
+            data[6] |= (byte) 0b01000000;
+        }
     }
 
     @Override
@@ -85,12 +82,10 @@ class UDPThread extends Thread {
             InetAddress address = InetAddress.getByAddress(new byte[]{(byte) ip1, (byte) ip2, (byte) ip3, (byte) ip4});
             while (true) {
                 while (isRunning) {
-                    DatagramPacket packet = new DatagramPacket(data, data.length, address, serverPort);
+                    DatagramPacket packet = new DatagramPacket(data, packet_size, address, serverPort);
                     socket.send(packet);
                 }
             }
-        } catch (SocketException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

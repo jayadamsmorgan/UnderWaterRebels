@@ -18,11 +18,10 @@ class Main extends ApplicationAdapter {
 
     @Override
     public void render() {
-        Gdx.gl.glClearColor(1, 0, 0, 1);
+        Gdx.gl.glClearColor(1f / 15f, 1f / 15f, 1f / 15f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         batch.begin();
         batch.end();
-        //udpThread.setData(-100, 100, 44, 33, 22, 11, 0, 0, 0, true, true, false);
     }
 
     @Override
