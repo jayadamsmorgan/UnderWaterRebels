@@ -80,7 +80,7 @@ class Main extends ApplicationAdapter {
     }
 
     private void setActorsPositions() {
-
+        // TODO: set positions of all actors
     }
 
     @Override

@@ -31,8 +31,8 @@ typedef unsigned char uchar;
 #define MAIN_MANIP_TIGHT_PINA    29
 #define MAIN_MANIP_TIGHT_PINB    28
 
-#define MULTIPLEXOR_PINA         24
-#define MULTIPLEXOR_PINB         22
+#define MULTIPLEXOR_PINA         25
+#define MULTIPLEXOR_PINB         41
 
 #define LED_PIN                  26
 
@@ -52,18 +52,18 @@ typedef unsigned char uchar;
 #define INCOMING_PACKET_SIZE     25
 #define OUTCOMING_PACKET_SIZE    13
 
-float PITCH_KP =               2.0;
-float PITCH_KI =               0.0;
-float PITCH_KD =               0.0;
+double PITCH_KP =               2.0;
+double PITCH_KI =               0.0;
+double PITCH_KD =               0.0;
 
-float DEPTH_KP =               2.0;
-float DEPTH_KI =               0.0;
-float DEPTH_KD =               0.0;
+double DEPTH_KP =               2.0;
+double DEPTH_KI =               0.0;
+double DEPTH_KD =               0.0;
 
-float YAW_KP1  =               0.0001;
-float YAW_KP   =               2.0;
-float YAW_KI   =               0.0;
-float YAW_KD   =               0.0;
+double YAW_KP1  =               0.0001;
+double YAW_KP   =               2.0;
+double YAW_KI   =               0.0;
+double YAW_KD   =               0.0;
 
 int MOTORMIDMICROSECONDS = (MOTORLOWMICROSECONDS + MOTORHIGHMICROSECONDS) / 2.0;
 
@@ -397,9 +397,7 @@ char receiveMessage() {
       botManipDir = 0;
     }
 
-    if (buttons[6] == 0 && buttons[7] == 1) {
-      muxChannel = 0;
-    } else if (buttons[6] == 1 && buttons[7] == 0) {
+    if (buttons[6] == 1) {
       muxChannel = 1;
     } else {
       muxChannel = 0;
@@ -443,34 +441,19 @@ char receiveMessage() {
 
 // Function to get koefficients from packetBuffer
 void getK() {
-  // Some bad coding)))
-  uint num = (static_cast<uint>(static_cast<uchar>(packetBuffer[8])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[7]));
-  YAW_KP = (float) num / 10000;
-  Serial.print("YP: "); Serial.print(YAW_KP); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[10])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[9]));
-  YAW_KI = (float) num / 10000;
-  Serial.print("YI: "); Serial.print(YAW_KI); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[12])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[11]));
-  YAW_KD = (float) num / 10000;
-  Serial.print("YD: "); Serial.print(YAW_KD); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[14])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[13]));
-  PITCH_KP = (float) num / 10000;
-  Serial.print("PP: "); Serial.print(PITCH_KP); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[16])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[15]));
-  PITCH_KI = (float) num / 10000;
-  Serial.print("PI: "); Serial.print(PITCH_KI); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[18])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[17]));
-  PITCH_KD = (float) num / 10000;
-  Serial.print("PD: "); Serial.print(PITCH_KD); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[20])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[19]));
-  DEPTH_KP = (float) num / 10000;
-  Serial.print("DP: "); Serial.print(DEPTH_KP); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[22])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[21]));
-  DEPTH_KI = (float) num / 10000;
-  Serial.print("DI: "); Serial.print(DEPTH_KI); Serial.print(", ");
-  num = (static_cast<uint>(static_cast<uchar>(packetBuffer[24])) << 8 ) | static_cast<uint>(static_cast<uchar>(packetBuffer[23]));
-  DEPTH_KD = (float) num / 10000;
-  Serial.print("DD: "); Serial.print(DEPTH_KD); Serial.println();
+  YAW_KP = (double) bytesToUInt(packetBuffer[7], packetBuffer[8]) / 10000;
+  YAW_KI = (double) bytesToUInt(packetBuffer[9], packetBuffer[10]) / 10000;
+  YAW_KD = (double) bytesToUInt(packetBuffer[11], packetBuffer[12]) / 10000;
+  PITCH_KP = (double) bytesToUInt(packetBuffer[13], packetBuffer[14]) / 10000;
+  PITCH_KI = (double) bytesToUInt(packetBuffer[15], packetBuffer[16]) / 10000;
+  PITCH_KD = (double) bytesToUInt(packetBuffer[17], packetBuffer[18]) / 10000;
+  DEPTH_KP = (double) bytesToUInt(packetBuffer[19], packetBuffer[20]) / 10000;
+  DEPTH_KI = (double) bytesToUInt(packetBuffer[21], packetBuffer[22]) / 10000;
+  DEPTH_KD = (double) bytesToUInt(packetBuffer[23], packetBuffer[24]) / 10000;
+}
+
+int bytesToUInt(byte firstByte, byte secondByte) {
+  return (static_cast<uint>(static_cast<uchar>(secondByte)) << 8 ) | static_cast<uint>(static_cast<uchar>(firstByte));
 }
 
 // Function to set values for PIDs
@@ -728,11 +711,11 @@ void updateYPR() {
 void selectMuxChannel() {
   if (muxChannel == 0) {
     digitalWrite(MULTIPLEXOR_PINA, LOW);
-    digitalWrite(MULTIPLEXOR_PINB, HIGH);
+    digitalWrite(MULTIPLEXOR_PINB, LOW);
   }
   else if (muxChannel == 1) {
     digitalWrite(MULTIPLEXOR_PINA, HIGH);
-    digitalWrite(MULTIPLEXOR_PINB, LOW);
+    digitalWrite(MULTIPLEXOR_PINB, HIGH);
   }
 }
 
