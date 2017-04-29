@@ -31,8 +31,7 @@ typedef unsigned char uchar;
 #define MAIN_MANIP_TIGHT_PINA    29
 #define MAIN_MANIP_TIGHT_PINB    28
 
-#define MULTIPLEXOR_PINA         25
-#define MULTIPLEXOR_PINB         41
+#define MULTIPLEXOR_PIN          24
 
 #define LED_PIN                  26
 
@@ -710,12 +709,10 @@ void updateYPR() {
 // Function to select right multiplexor channel
 void selectMuxChannel() {
   if (muxChannel == 0) {
-    digitalWrite(MULTIPLEXOR_PINA, LOW);
-    digitalWrite(MULTIPLEXOR_PINB, LOW);
+    digitalWrite(MULTIPLEXOR_PIN, LOW);
   }
   else if (muxChannel == 1) {
-    digitalWrite(MULTIPLEXOR_PINA, HIGH);
-    digitalWrite(MULTIPLEXOR_PINB, HIGH);
+    digitalWrite(MULTIPLEXOR_PIN, HIGH);
   }
 }
 

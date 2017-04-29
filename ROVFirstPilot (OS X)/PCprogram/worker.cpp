@@ -65,24 +65,24 @@ void Worker::parsePacket()
 {
     for(int i = 0;i < 3;++i)
     {
-        int tmp = (char)input[i*2];
-        tmp = tmp<<8|0;
-        tmp  = tmp|((int)((char)(input[i*2+1])));
-        axs[i] = tmp;
+        int tmp = (int)(uchar)input[i*2];
+        tmp = tmp<<8|((int)((uchar)(input[i*2+1])));
+        axs[i] = (int)tmp/100;
     }
     depth = (int)((char)input[6]);
-    depth = depth<<8|((int)((char)(input[7])));
-    yawsetpoint = (int)((char)input[8]);
-    yawsetpoint = yawsetpoint<<8|((int)((char)(input[9])));
+    depth = depth<<8|((int)((uchar)(input[7])));
+    yawsetpoint = (int)((uchar)input[8]);
+    yawsetpoint = yawsetpoint<<8|((int)((uchar)(input[9])));
+    yawsetpoint  = yawsetpoint/100;
     pitchsetpoint = (int)((char)input[10]);
-    pitchsetpoint = pitchsetpoint<<8|((int)((char)(input[11])));
-    leak = input[12]&(char)1;
+    pitchsetpoint = pitchsetpoint<<8|((int)((uchar)(input[11])));
+    pitchsetpoint = (int)pitchsetpoint*1;
+    leak = input[12]&(uchar)1;
 }
 
 void Worker::uinformation()
 {
-    ping = 0;
-    depth = 0;
+
 
     emit updateInfo(cam2id,depth,speedMode,axs[0],axs[1],axs[2],yawsetpoint,pitchsetpoint,Veichle->state,AY,AD,AP,leak);
 

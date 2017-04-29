@@ -49,7 +49,7 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
     ui->setdepth->setText("-> " + QString::number(setpitch));
     //ui->ping->setText("Ping: " + QString::number(ping));
     cam2num = cam2id;
-    qDebug()<<cam2id;
+    qDebug()<<yaw <<" "<<pitch<<" "<<roll;
     switch(speed)
     {
         case 0:
