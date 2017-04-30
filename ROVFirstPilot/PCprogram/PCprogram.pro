@@ -10,7 +10,7 @@ QT       += network
 
 LIBS += -L$$PWD/SDL-1.2.15/lib/ -lSDL.dll
 INCLUDEPATH += $$PWD/SDL-1.2.15/include/SDL
-
+CONFIG += console
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = PCprogram

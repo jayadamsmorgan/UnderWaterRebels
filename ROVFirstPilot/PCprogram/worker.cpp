@@ -1,5 +1,7 @@
 #include "worker.h"
-
+#include <bitset>
+#include <iostream>
+using namespace std;
 QHostAddress kulebyaka("192.168.1.177");
 quint16 port = 8000;
 double koefs[9];
@@ -101,23 +103,6 @@ void Worker::formPacket()
     }
 
     char button = 0;
-    //camera rotation
-    if(SDL_JoystickGetHat(joy,0) == 1)
-        button = button<<1|1;
-    else
-      button = button<<1|0;
-
-    if(SDL_JoystickGetHat(joy,0) == 4)
-        button = button<<1|1;
-    else
-      button = button<<1|0;
-
-    //main manipulator
-    button = button<<1|SDL_JoystickGetButton(joy,0);
-    button = button<<1|SDL_JoystickGetButton(joy,1);
-    //bottom manipulator
-    button = button<<1|SDL_JoystickGetButton(joy,8);
-    button = button<<1|SDL_JoystickGetButton(joy,9);
 
     //multiplexer
     if(SDL_JoystickGetButton(joy,2))
@@ -137,6 +122,31 @@ void Worker::formPacket()
         button = button<<1|1;
         button = button<<1|0;
     }
+    //bottom manipulator
+    button = button<<1|SDL_JoystickGetButton(joy,8);
+    button = button<<1|SDL_JoystickGetButton(joy,9);
+
+    //main manipulator
+    button = button<<1|SDL_JoystickGetButton(joy,0);
+    button = button<<1|SDL_JoystickGetButton(joy,1);
+
+    //camera rotation
+    if(SDL_JoystickGetHat(joy,0) == 1)
+        button = button<<1|1;
+    else
+      button = button<<1|0;
+
+    if(SDL_JoystickGetHat(joy,0) == 4)
+        button = button<<1|1;
+    else
+      button = button<<1|0;
+
+
+
+
+
+    bitset<8> bit(button);
+    cout << bit << endl;
 
     output.append(button);
 
@@ -205,7 +215,7 @@ void Worker::onUpdateJoy()
     SDL_JoystickClose(joy);
 
     SDL_Quit();
-    qDebug() << "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssss";
+    //qDebug() << "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssss";
     event = new SDL_Event;
     SDL_Init(SDL_INIT_JOYSTICK);
     SDL_JoystickEventState(SDL_ENABLE);
