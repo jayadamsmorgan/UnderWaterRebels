@@ -39,12 +39,11 @@ typedef unsigned char uchar;
 #define SERVO_CAMERA_PIN         7
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
+#define SERVO_ANGLE_DELTA        3
 
-#define CAMERA_ANGLE_DELTA       3
-#define MIN_CAMERA_ANGLE         40
-#define MAX_CAMERA_ANGLE         160
+#define MIN_CAMERA_ANGLE         40   // ?
+#define MAX_CAMERA_ANGLE         160  // ?
 
-#define BOTTOM_MANIP_ANGLE_DELTA 3
 #define MAX_BOTTOM_MANIP_ANGLE   160  // ?
 #define MIN_BOTTOM_MANIP_ANGLE   100  // ?
 
@@ -164,11 +163,11 @@ void controlPeripherals() {
   unsigned long long current_time = millis();
   if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (servoCamDir > 0) {
-      camera_angle += CAMERA_ANGLE_DELTA;
+      camera_angle += SERVO_ANGLE_DELTA;
       if (camera_angle > MAX_CAMERA_ANGLE)
         camera_angle = MAX_CAMERA_ANGLE;
     } else {
-      camera_angle -= CAMERA_ANGLE_DELTA;
+      camera_angle -= SERVO_ANGLE_DELTA;
       if (camera_angle < MIN_CAMERA_ANGLE)
         camera_angle = MIN_CAMERA_ANGLE;
     }
@@ -180,11 +179,11 @@ void controlPeripherals() {
   current_time = millis();
   if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (botManipDir > 0) {
-      bottom_manip_angle += BOTTOM_MANIP_ANGLE_DELTA;
+      bottom_manip_angle += SERVO_ANGLE_DELTA;
       if (bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
         bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
     } else {
-      bottom_manip_angle -= BOTTOM_MANIP_ANGLE_DELTA;
+      bottom_manip_angle -= SERVO_ANGLE_DELTA;
       if (bottom_manip_angle < MIN_BOTTOM_MANIP_ANGLE)
         bottom_manip_angle = MIN_BOTTOM_MANIP_ANGLE;
     }
