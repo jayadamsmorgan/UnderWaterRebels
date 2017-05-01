@@ -91,6 +91,30 @@ void alarm() {
   }
 }
 
+int updateCurrent() {
+  int currentArray[10];
+  for (int i = 0; i < 10; i++) {
+    currentArray[i] = analogRead(pinA);
+  }
+  for (int i = 0; i < (10 - 1); i++) {
+    for (int o = 0; o < (10 - (i + 1)); o++) {
+      if (currentArray[o] > currentArray[o + 1]) {
+        int t = currentArray[o];
+        currentArray[o] = currentArray[o + 1];
+        currentArray[o + 1] = t;
+      }
+    }
+  }
+  float value = -(30.9/365) * currentArray[4] + (15975.3/365);
+  int returnableValue;
+  if (value - (int) value >= 0.5f) {
+    returnableValue = (int) value + 1;
+  } else {
+    returnableValue = (int) value;
+  }
+  return value;
+}
+
 void updateValues(int current, int voltage, int rpm, int temperature) {
   // Printing current based on length
   lcd.setCursor(16, 0);
@@ -147,7 +171,7 @@ void updateValues(int current, int voltage, int rpm, int temperature) {
 
 void loop() {
   // Read data from sensors & print data
-  int current = analogRead(pinA);
+  int current = updateCurrent();
   int voltage = getVoltage();
   int temp = (int) getCelcius();
   updateRPM();
