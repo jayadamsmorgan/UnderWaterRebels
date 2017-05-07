@@ -10,12 +10,12 @@
 typedef unsigned uint;
 typedef unsigned char uchar;
 
-#define MOTOR1PIN                11
-#define MOTOR2PIN                12
-#define MOTOR3PIN                13
-#define MOTOR4PIN                46
-#define MOTOR5PIN                45
-#define MOTOR6PIN                44
+#define MOTOR1PIN                45
+#define MOTOR2PIN                46
+#define MOTOR3PIN                44
+#define MOTOR4PIN                11
+#define MOTOR5PIN                13
+#define MOTOR6PIN                12
 
 #define MOTORLOWMICROSECONDS     1465
 #define MOTORHIGHMICROSECONDS    1510
@@ -35,8 +35,8 @@ typedef unsigned char uchar;
 
 #define LED_PIN                  26
 
-#define SERVO_MANIPULATOR_PIN    6
-#define SERVO_CAMERA_PIN         7
+#define SERVO_MANIPULATOR_PIN    8
+#define SERVO_CAMERA_PIN         4
 
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 #define SERVO_ANGLE_DELTA        3
@@ -44,8 +44,8 @@ typedef unsigned char uchar;
 #define MIN_CAMERA_ANGLE         40   // ?
 #define MAX_CAMERA_ANGLE         160  // ?
 
-#define MAX_BOTTOM_MANIP_ANGLE   160  // ?
-#define MIN_BOTTOM_MANIP_ANGLE   100  // ?
+#define MAX_BOTTOM_MANIP_ANGLE   180  // ?
+#define MIN_BOTTOM_MANIP_ANGLE   0  // ?
 
 #define INCOMING_PACKET_SIZE     25
 #define OUTCOMING_PACKET_SIZE    13
@@ -79,7 +79,7 @@ Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
 
 Servo camera, bottomManip;
-int camera_angle = (MAX_CAMERA_ANGLE + MIN_CAMERA_ANGLE) / 2, bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
+int camera_angle, new_camera_angle, bottom_manip_angle, new_bottom_manip_angle;
 unsigned long long prev_camera_servo_update, prev_manip_servo_update;
 
 char servoCamDir = 0, manTightDir = 0, botManipDir = 0;
@@ -121,19 +121,19 @@ PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP1, YAW_KI, YAW_KD, DIR
 // Function for controlling motor system
 void controlPeripherals() {
   // Auto modes realization:
-  if (isAutoPitch && isAutoDepth) {
+  if (isAutoPitch && isAutoDepth && js_val[2] == 0) {
     Serial.println("Using AutoPitch & AutoDepth mode");
     autoPitchAndDepth();
-  } else if (isAutoPitch) {
+  } else if (isAutoPitch && js_val[2] == 0) {
     Serial.println("Using AutoPitch mode");
     autoPitch();
     depthSetpoint = depth; // Set target for AutoDepth
-  } else if (isAutoDepth) {
+  } else if (isAutoDepth && js_val[2] == 0) {
     Serial.println("Using AutoDepth mode");
     autoDepth();
   } else {
     // Set vertical thrust
-    verticalMotorControl(verMotor1, js_val[2]);
+    verticalMotorControl(verMotor1, -js_val[2]);
     verticalMotorControl(verMotor2, js_val[2]);
 
     // Set target for AutoDepth
@@ -141,14 +141,14 @@ void controlPeripherals() {
   }
 
   // AutoYaw mode realization:
-  if (isAutoYaw) {
+  if (isAutoYaw && js_val[0] == 0 && js_val[1] == 0 && js_val[3] == 0) {
     Serial.println("Using AutoYaw mode");
     autoYaw();
   } else {
     // Set horizontal thrust
-    horizontalMotorControl(horMotor1, js_val[0], js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor2, js_val[0], js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor3, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor1, js_val[0], -js_val[1], -js_val[3]);
+    horizontalMotorControl(horMotor2, js_val[0], js_val[1], -js_val[3]);
+    horizontalMotorControl(horMotor3, js_val[0], -js_val[1], js_val[3]);
     horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
 
     // Set target for AutoYaw
@@ -161,34 +161,41 @@ void controlPeripherals() {
 
   // Camera's servo controlling
   unsigned long long current_time = millis();
+  
   if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (servoCamDir > 0) {
-      camera_angle += SERVO_ANGLE_DELTA;
+      new_camera_angle += SERVO_ANGLE_DELTA;
       if (camera_angle > MAX_CAMERA_ANGLE)
-        camera_angle = MAX_CAMERA_ANGLE;
+        new_camera_angle = MAX_CAMERA_ANGLE;
     } else {
-      camera_angle -= SERVO_ANGLE_DELTA;
+      new_camera_angle -= SERVO_ANGLE_DELTA;
       if (camera_angle < MIN_CAMERA_ANGLE)
-        camera_angle = MIN_CAMERA_ANGLE;
+        new_camera_angle = MIN_CAMERA_ANGLE;
     }
   }
-  camera.write(camera_angle);
+  if (camera_angle != new_camera_angle) {
+    camera.write(new_camera_angle);
+    camera_angle = new_camera_angle;
+  }
   prev_camera_servo_update = millis();
 
   // Bottom maniplulator's servo controlling
   current_time = millis();
   if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (botManipDir > 0) {
-      bottom_manip_angle += SERVO_ANGLE_DELTA;
-      if (bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
-        bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
+      new_bottom_manip_angle += SERVO_ANGLE_DELTA;
+      if (new_bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
+        new_bottom_manip_angle = MAX_BOTTOM_MANIP_ANGLE;
     } else {
-      bottom_manip_angle -= SERVO_ANGLE_DELTA;
-      if (bottom_manip_angle < MIN_BOTTOM_MANIP_ANGLE)
-        bottom_manip_angle = MIN_BOTTOM_MANIP_ANGLE;
+      new_bottom_manip_angle -= SERVO_ANGLE_DELTA;
+      if (new_bottom_manip_angle < MIN_BOTTOM_MANIP_ANGLE)
+        new_bottom_manip_angle = MIN_BOTTOM_MANIP_ANGLE;
     }
   }
-  bottomManip.write(bottom_manip_angle);
+  if (bottom_manip_angle != new_bottom_manip_angle) {
+    bottomManip.write(new_bottom_manip_angle);
+    bottom_manip_angle = new_bottom_manip_angle;
+  }
   prev_manip_servo_update = millis();
 
   // Select multiplexor channel for right video out
@@ -201,8 +208,8 @@ void controlPeripherals() {
 // AutoPitch & AutoDepth mode
 void autoPitchAndDepth() {
 
-  depthInput = depth;
-  pitchInput = rotationAngle(pitch, 0);
+  depthInput = depthSetpoint - depth;
+  pitchInput = pitch;
 
   autoPitchPID.Compute();
   autoDepthPID.Compute();
@@ -226,7 +233,7 @@ void autoPitchAndDepth() {
     output2 = -100.0;
   }
 
-  verticalMotorControl(verMotor1, (char) output1);
+  verticalMotorControl(verMotor1, (char) - output1);
   verticalMotorControl(verMotor2, (char) output2);
 }
 
@@ -260,7 +267,7 @@ void autoPitch() {
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
   Serial.print("Current pitch is: ");        Serial.println(pitch);
 
-  verticalMotorControl(verMotor1, (char) pitchOutput);
+  verticalMotorControl(verMotor1, (char) - pitchOutput);
   verticalMotorControl(verMotor2, (char) - pitchOutput);
 }
 
@@ -292,7 +299,7 @@ void autoDepth() {
     depthOutput = -100.0;
   }
 
-  verticalMotorControl(verMotor1, (char) depthOutput);
+  verticalMotorControl(verMotor1, (char) - depthOutput);
   verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
@@ -366,6 +373,7 @@ char receiveMessage() {
       js_val[i] = (signed char)packetBuffer[i];
       Serial.print("js"); Serial.print(i); Serial.print(": "); Serial.println(js_val[i]);
     }
+    js_val[2] = -js_val[2];
     for (int i = 0; i < 8; ++i) {
       buttons[i] = (packetBuffer[5] >> i) & 1;
       Serial.print("btn"); Serial.print(i); Serial.print(": "); Serial.println(buttons[i]);
@@ -589,11 +597,16 @@ void setup() {
   Ethernet.begin(mac, ip);
   Udp.begin(8000);
 
+  pinMode(SERVO_CAMERA_PIN, OUTPUT);
+  pinMode(SERVO_MANIPULATOR_PIN, OUTPUT);
+
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
-  camera.write(camera_angle);
+  new_camera_angle = 90;
+  camera.write(new_camera_angle);
   bottomManip.attach(SERVO_MANIPULATOR_PIN);
-  bottomManip.write(bottom_manip_angle);
+  new_bottom_manip_angle = 90;
+  bottomManip.write(new_bottom_manip_angle);
 
   // Init PID settings
   autoPitchPID.SetMode(AUTOMATIC);
@@ -645,14 +658,14 @@ double altitude(double P, double P0) {
 void updateYPR() {
   double prevyaw = yaw;
   // Reading magnetometer values from IMU
-  double fyawarray[5];
-  for (int i = 0; i < 5; i++) {
+  double fyawarray[15];
+  for (int i = 0; i < 15; i++) {
     Vector mag = compass.readNormalize();
     // Calculating yaw
     fyawarray[i] = atan2(mag.YAxis, mag.XAxis);
   }
-  for (int i = 0; i < (5 - 1); i++) {
-    for (int o = 0; o < (5 - (i + 1)); o++) {
+  for (int i = 0; i < (15 - 1); i++) {
+    for (int o = 0; o < (15 - (i + 1)); o++) {
       if (fyawarray[o] > fyawarray[o + 1]) {
         int t = fyawarray[o];
         fyawarray[o] = fyawarray[o + 1];
@@ -660,7 +673,7 @@ void updateYPR() {
       }
     }
   }
-  yaw = fyawarray[2];
+  yaw = fyawarray[7];
   yaw += declinationAngle;
   if (yaw < 0) {
     yaw += 2 * PI;
@@ -726,10 +739,12 @@ void switchLED() {
 
 // Loop function
 void loop() {
+  digitalWrite(LED_PIN, HIGH);
+  /*
   updateYPR();
   updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
-  controlPeripherals();
+  controlPeripherals();*/
 }
