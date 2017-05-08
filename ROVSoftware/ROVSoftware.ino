@@ -28,8 +28,8 @@ typedef unsigned char uchar;
 #define MAIN_MANIP_ROT_PINA      9
 #define MAIN_MANIP_ROT_PINB      14
 
-#define MAIN_MANIP_TIGHT_PINA    29
-#define MAIN_MANIP_TIGHT_PINB    28
+#define MAIN_MANIP_TIGHT_PINA    28
+#define MAIN_MANIP_TIGHT_PINB    29
 
 #define MULTIPLEXOR_PIN          24
 
@@ -41,14 +41,14 @@ typedef unsigned char uchar;
 #define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 #define SERVO_ANGLE_DELTA        3
 
-#define MIN_CAMERA_ANGLE         40   // ?
-#define MAX_CAMERA_ANGLE         160  // ?
+#define MIN_CAMERA_ANGLE         20
+#define MAX_CAMERA_ANGLE         160
 
-#define MAX_BOTTOM_MANIP_ANGLE   180  // ?
-#define MIN_BOTTOM_MANIP_ANGLE   0  // ?
+#define MAX_BOTTOM_MANIP_ANGLE   80
+#define MIN_BOTTOM_MANIP_ANGLE   0
 
 #define INCOMING_PACKET_SIZE     25
-#define OUTCOMING_PACKET_SIZE    13
+#define OUTCOMING_PACKET_SIZE    15
 
 double PITCH_KP =               2.0;
 double PITCH_KI =               0.0;
@@ -165,11 +165,11 @@ void controlPeripherals() {
   if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
     if (servoCamDir > 0) {
       new_camera_angle += SERVO_ANGLE_DELTA;
-      if (camera_angle > MAX_CAMERA_ANGLE)
+      if (new_camera_angle > MAX_CAMERA_ANGLE)
         new_camera_angle = MAX_CAMERA_ANGLE;
     } else {
       new_camera_angle -= SERVO_ANGLE_DELTA;
-      if (camera_angle < MIN_CAMERA_ANGLE)
+      if (new_camera_angle < MIN_CAMERA_ANGLE)
         new_camera_angle = MIN_CAMERA_ANGLE;
     }
   }
@@ -380,9 +380,9 @@ char receiveMessage() {
     }
 
     if (buttons[0] == 0 && buttons[1] == 1) {
-      servoCamDir = -1;
-    } else if (buttons[0] == 1 && buttons[1] == 0) {
       servoCamDir = 1;
+    } else if (buttons[0] == 1 && buttons[1] == 0) {
+      servoCamDir = -1;
     } else {
       servoCamDir = 0;
     }
@@ -434,10 +434,10 @@ char receiveMessage() {
     isLED = (packetBuffer[6] >> 6) & 1;
     Serial.print("isLED: "); Serial.println(isLED);
 
-    getK();
+    //getK();
     // ENDING PARSING PACKET ********
 
-    setK();
+    //setK();
 
     return 1;
   } else {
@@ -489,6 +489,8 @@ void sendReply() {
   for (int i = 0; i < 8; ++i) {
     replyBuffer[12] |= leak[i] << i;
   }
+  replyBuffer[13] = ((uint) (new_camera_angle) >> 8) & 0xFF;
+  replyBuffer[14] = ((uint) (new_camera_angle)) & 0xFF;
 
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
@@ -597,15 +599,20 @@ void setup() {
   Ethernet.begin(mac, ip);
   Udp.begin(8000);
 
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(MAIN_MANIP_ROT_PINA, OUTPUT);
+  pinMode(MAIN_MANIP_ROT_PINB, OUTPUT);
+  pinMode(MAIN_MANIP_TIGHT_PINA, OUTPUT);
+  pinMode(MAIN_MANIP_TIGHT_PINB, OUTPUT);
   pinMode(SERVO_CAMERA_PIN, OUTPUT);
   pinMode(SERVO_MANIPULATOR_PIN, OUTPUT);
 
   // Init bottom manipulator & main camera
   camera.attach(SERVO_CAMERA_PIN);
-  new_camera_angle = 90;
+  new_camera_angle = 120;
   camera.write(new_camera_angle);
   bottomManip.attach(SERVO_MANIPULATOR_PIN);
-  new_bottom_manip_angle = 90;
+  new_bottom_manip_angle = 80;
   bottomManip.write(new_bottom_manip_angle);
 
   // Init PID settings
@@ -656,24 +663,8 @@ double altitude(double P, double P0) {
 
 // Function for updating yaw, pitch, roll
 void updateYPR() {
-  double prevyaw = yaw;
-  // Reading magnetometer values from IMU
-  double fyawarray[15];
-  for (int i = 0; i < 15; i++) {
-    Vector mag = compass.readNormalize();
-    // Calculating yaw
-    fyawarray[i] = atan2(mag.YAxis, mag.XAxis);
-  }
-  for (int i = 0; i < (15 - 1); i++) {
-    for (int o = 0; o < (15 - (i + 1)); o++) {
-      if (fyawarray[o] > fyawarray[o + 1]) {
-        int t = fyawarray[o];
-        fyawarray[o] = fyawarray[o + 1];
-        fyawarray[o + 1] = t;
-      }
-    }
-  }
-  yaw = fyawarray[7];
+  Vector mag = compass.readNormalize();
+  yaw = atan2(mag.YAxis, mag.XAxis);
   yaw += declinationAngle;
   if (yaw < 0) {
     yaw += 2 * PI;
@@ -682,9 +673,6 @@ void updateYPR() {
     yaw -= 2 * PI;
   }
   yaw = yaw * 180 / M_PI;
-  if (yaw > 4.42 && yaw < 4.44) {
-    yaw = prevyaw; 
-  }
 
   // Reading accelerometer values from IMU; calculating & filtering (median filter) pitch & roll
   double fpitcharray[5];
@@ -714,8 +702,9 @@ void updateYPR() {
     }
   }
 
-  pitch = fpitcharray[2];
-  roll = frollarray[2];
+  // Swap pitch & roll because our electronic engineers are very stupid...
+  roll = fpitcharray[2];
+  pitch = frollarray[2];
 }
 
 // Function to select right multiplexor channel
@@ -739,12 +728,10 @@ void switchLED() {
 
 // Loop function
 void loop() {
-  digitalWrite(LED_PIN, HIGH);
-  /*
   updateYPR();
   updateDepth();
   if (receiveMessage() == 1) {
     sendReply();
   }
-  controlPeripherals();*/
+  controlPeripherals();
 }
