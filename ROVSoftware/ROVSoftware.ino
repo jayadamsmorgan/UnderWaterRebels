@@ -149,7 +149,7 @@ void controlPeripherals() {
     horizontalMotorControl(horMotor1, js_val[0], -js_val[1], -js_val[3]);
     horizontalMotorControl(horMotor2, js_val[0], js_val[1], -js_val[3]);
     horizontalMotorControl(horMotor3, js_val[0], -js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor4, js_val[0], js_val[1], js_val[3]);
+    horizontalMotorControl(horMotor4, -js_val[0], -js_val[1], -js_val[3]);
 
     // Set target for AutoYaw
     yawSetpoint = yaw;
@@ -526,7 +526,7 @@ void verticalMotorControl(Servo motor, short z) {
   int sum = z;
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
-  POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
+  POW = int((sum * (MOTORRANGE / 100.0)));
   Serial.print("Vertical motor pow: "); Serial.println(POW);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
