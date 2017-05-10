@@ -267,8 +267,8 @@ void autoPitch() {
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
   Serial.print("Current pitch is: ");        Serial.println(pitch);
 
-  verticalMotorControl(verMotor1, (char) - pitchOutput);
-  verticalMotorControl(verMotor2, (char) - pitchOutput);
+  verticalMotorControl(verMotor1, (char) pitchOutput);
+  verticalMotorControl(verMotor2, (char) pitchOutput);
 }
 
 // AutoDepth mode
