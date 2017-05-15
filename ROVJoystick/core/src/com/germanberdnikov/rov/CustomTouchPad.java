@@ -13,7 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.Pools;
 
 /**
- * This is copy of LibGDX's Touchpad class, modified to support of setting knob position
+ * This is copy of LibGDX's Touchpad class, modified for support to set knob position
  */
 
 class CustomTouchPad extends Widget {
@@ -157,52 +157,11 @@ class CustomTouchPad extends Widget {
         return touched;
     }
 
-    public boolean getResetOnTouchUp() {
-        return resetOnTouchUp;
-    }
-
-    public void setResetOnTouchUp(boolean reset) {
-        this.resetOnTouchUp = reset;
-    }
-
-    public void setDeadzone(float deadzoneRadius) {
-        if (deadzoneRadius < 0) throw new IllegalArgumentException("deadzoneRadius must be > 0");
-        this.deadzoneRadius = deadzoneRadius;
-        invalidate();
-    }
-
-    public float getKnobX() {
-        return knobPosition.x;
-    }
-
-    public float getKnobY() {
-        return knobPosition.y;
-    }
-
     public float getKnobPercentX() {
         return knobPercent.x;
     }
 
     public float getKnobPercentY() {
         return knobPercent.y;
-    }
-
-    public static class TouchpadStyle {
-        public Drawable background;
-
-        public Drawable knob;
-
-        public TouchpadStyle() {
-        }
-
-        public TouchpadStyle(Drawable background, Drawable knob) {
-            this.background = background;
-            this.knob = knob;
-        }
-
-        public TouchpadStyle(com.badlogic.gdx.scenes.scene2d.ui.Touchpad.TouchpadStyle style) {
-            this.background = style.background;
-            this.knob = style.knob;
-        }
     }
 }

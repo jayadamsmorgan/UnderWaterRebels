@@ -19,11 +19,11 @@ typedef unsigned char uchar;
 
 #define MOTORLOWMICROSECONDS     1465
 #define MOTORHIGHMICROSECONDS    1510
-#define MOTORRANGE               400
+#define MOTORRANGE               500
 
 #define HIGH_SPEED_K             1.0
-#define MID_SPEED_K              0.6
-#define LOW_SPEED_K              0.3
+#define MID_SPEED_K              0.5
+#define LOW_SPEED_K              0.17
 
 #define MAIN_MANIP_ROT_PINA      9
 #define MAIN_MANIP_ROT_PINB      14
@@ -50,7 +50,7 @@ typedef unsigned char uchar;
 #define INCOMING_PACKET_SIZE     25
 #define OUTCOMING_PACKET_SIZE    15
 
-double PITCH_KP =               2.0;
+double PITCH_KP =               2.5;
 double PITCH_KI =               0.0;
 double PITCH_KD =               0.0;
 
