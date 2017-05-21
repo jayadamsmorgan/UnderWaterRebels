@@ -22,15 +22,24 @@ class Main extends ApplicationAdapter {
     private Slider zSlider, rSlider;
     private CustomTouchPad xyTouchPad;
 
+    // JS Data
+    private int xAxis, yAxis, zAxis, rzAxis, wAxis;
+    private boolean isAutoYaw, isAutoPitch, isAutoDepth, isLED;
+    private int speedMode, muxChannel;
+    private int cameraRotateDirection, manipulatorTightDirection, manipulatorRotateDirection,
+            bottomManipulatorDirection;
+
     @Override
     public void create() {
         batch = new SpriteBatch();
         mainStage = new Stage();
 
         Image zSliderBackgroundImage = new Image(
-                new Texture(Gdx.files.internal("ui/sliders/zSlider/zSliderBackground.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/sliders/zSlider/zSliderBackground.png")));
         Image zSliderKnobImage = new Image(
-                new Texture(Gdx.files.internal("ui/sliders/zSlider/zSliderKnob.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/sliders/zSlider/zSliderKnob.png")));
         Drawable zSliderBackground = zSliderBackgroundImage.getDrawable();
         Drawable zSliderKnob = zSliderKnobImage.getDrawable();
         Slider.SliderStyle zSliderStyle = new Slider.SliderStyle(zSliderBackground,
@@ -38,18 +47,22 @@ class Main extends ApplicationAdapter {
         zSlider = new Slider(-100f, 100f, 1f, true, zSliderStyle);
 
         Image rSliderBackgroundImage = new Image(
-                new Texture(Gdx.files.internal("ui/sliders/rSlider/rSliderBackground.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/sliders/rSlider/rSliderBackground.png")));
         Image rSliderKnobImage = new Image(
-                new Texture(Gdx.files.internal("ui/sliders/rSlider/rSliderKnob.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/sliders/rSlider/rSliderKnob.png")));
         Drawable rSliderBackground = rSliderBackgroundImage.getDrawable();
         Drawable rSliderKnob = rSliderKnobImage.getDrawable();
         Slider.SliderStyle rSliderStyle = new Slider.SliderStyle(rSliderBackground, rSliderKnob);
         rSlider = new Slider(-100f, 100f, 1f, false, rSliderStyle);
 
         Image xyTouchPadBackgroundImage = new Image(
-                new Texture(Gdx.files.internal("ui/touchPads/xyTouchPad/xyTouchPadBackground.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/touchPads/xyTouchPad/xyTouchPadBackground.png")));
         Image xyTouchPadKnobImage = new Image(
-                new Texture(Gdx.files.internal("ui/touchPads/xyTouchPad/xyTouchPadKnob.png")));
+                new Texture(Gdx.files.internal(
+                        "ui/touchPads/xyTouchPad/xyTouchPadKnob.png")));
         Drawable xyTouchPadBackground = xyTouchPadBackgroundImage.getDrawable();
         Drawable xyTouchPadKnob = xyTouchPadKnobImage.getDrawable();
         Touchpad.TouchpadStyle xyTouchPadStyle = new Touchpad.TouchpadStyle(xyTouchPadBackground,
@@ -77,12 +90,21 @@ class Main extends ApplicationAdapter {
         batch.begin();
         mainStage.draw();
         batch.end();
+        prepareData();
         preparePacket();
     }
 
     private void preparePacket() {
-        udpThread.setData((int) xyTouchPad.getKnobPercentX(), (int) xyTouchPad.getKnobPercentY(),
-                (int) zSlider.getValue(), (int) rSlider.getValue(), 0, 0, 0, 0, 0, 0, false, false, false, false);
+        udpThread.setData(xAxis, yAxis, zAxis, rzAxis, wAxis,
+                cameraRotateDirection, manipulatorTightDirection, bottomManipulatorDirection,
+                speedMode, muxChannel, isAutoYaw, isAutoPitch, isAutoDepth, isLED);
+    }
+
+    private void prepareData() {
+        xAxis = (int) xyTouchPad.getKnobPercentX();
+        yAxis = (int) xyTouchPad.getKnobPercentY();
+        zAxis = (int) zSlider.getValue();
+        rzAxis = (int) rSlider.getValue();
     }
 
     private void setZeroPositions() {
@@ -98,9 +120,12 @@ class Main extends ApplicationAdapter {
     }
 
     private void setActorsSize() {
-        zSlider.setSize(60, Gdx.graphics.getHeight());
-        rSlider.setSize(Gdx.graphics.getWidth() - zSlider.getWidth() - 30, 120);
-        xyTouchPad.setSize(Gdx.graphics.getWidth() / 2.5f, Gdx.graphics.getWidth() / 2.5f);
+        zSlider.setSize(60,
+                Gdx.graphics.getHeight());
+        rSlider.setSize(Gdx.graphics.getWidth() - zSlider.getWidth() - 30,
+                120);
+        xyTouchPad.setSize(Gdx.graphics.getWidth() / 2.5f,
+                Gdx.graphics.getWidth() / 2.5f);
     }
 
     private void setActorsPositions() {
@@ -124,4 +149,3 @@ class Main extends ApplicationAdapter {
         batch.dispose();
     }
 }
-

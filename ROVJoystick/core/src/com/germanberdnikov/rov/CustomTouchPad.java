@@ -18,8 +18,8 @@ import com.badlogic.gdx.utils.Pools;
 
 class CustomTouchPad extends Widget {
     private com.badlogic.gdx.scenes.scene2d.ui.Touchpad.TouchpadStyle style;
-    boolean touched;
-    boolean resetOnTouchUp = true;
+    private boolean touched;
+    private boolean resetOnTouchUp = true;
     private float deadzoneRadius;
     private final Circle knobBounds = new Circle(0, 0, 0);
     private final Circle touchBounds = new Circle(0, 0, 0);
@@ -89,14 +89,10 @@ class CustomTouchPad extends Widget {
         }
     }
 
-    public void setStyle(com.badlogic.gdx.scenes.scene2d.ui.Touchpad.TouchpadStyle style) {
+    private void setStyle(com.badlogic.gdx.scenes.scene2d.ui.Touchpad.TouchpadStyle style) {
         if (style == null) throw new IllegalArgumentException("style cannot be null");
         this.style = style;
         invalidateHierarchy();
-    }
-
-    public com.badlogic.gdx.scenes.scene2d.ui.Touchpad.TouchpadStyle getStyle() {
-        return style;
     }
 
     @Override
@@ -153,15 +149,15 @@ class CustomTouchPad extends Widget {
         return style.background != null ? style.background.getMinHeight() : 0;
     }
 
-    public boolean isTouched() {
+    boolean isTouched() {
         return touched;
     }
 
-    public float getKnobPercentX() {
+    float getKnobPercentX() {
         return knobPercent.x;
     }
 
-    public float getKnobPercentY() {
+    float getKnobPercentY() {
         return knobPercent.y;
     }
 }
