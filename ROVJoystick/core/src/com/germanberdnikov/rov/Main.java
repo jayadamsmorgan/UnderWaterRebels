@@ -40,15 +40,15 @@ class Main extends ApplicationAdapter {
         zSlider = createNewSlider(zSliderBackground, zSliderKnob,
                 -100f, 100f, 1f, true);
 
-        speedSlider = createNewSlider(speedSliderBackground, speedSliderKnob,
+        /*speedSlider = createNewSlider(speedSliderBackground, speedSliderKnob,
                 0f, 3f, 1f, false);
-
+                */
         rSlider = createNewSlider(rSliderBackground, rSliderKnob,
                 -100f, 100f, 1f, false);
 
         xyTouchPad = createNewTouchPad(xyTouchPadBackground, xyTouchPadKnob, 5f);
 
-        rMainManipSlider = createNewSlider(rMainManipSliderBackground, rMainManipSliderKnob,
+        /*rMainManipSlider = createNewSlider(rMainManipSliderBackground, rMainManipSliderKnob,
                 -1f, 1f, 1f, false);
 
         camSlider = createNewSlider(camSliderBackground, camSliderKnob,
@@ -56,7 +56,6 @@ class Main extends ApplicationAdapter {
 
         tBotManipSlider = createNewSlider(tBotManipSliderBackground, tBotManipSliderKnob,
                 -1f, 1f, 1f, true);
-
         tightMainManipButton = createNewButton(tightMainManipButtonUp, tightMainManipButtonDown);
         untightMainManipButton = createNewButton(untightMainManipButtonUp, untightMainManipButtonDown);
         autoPitchButton = createNewButton(autoPitchButtonUp, autoPitchButtonDown, autoPitchButtonChecked);
@@ -64,12 +63,12 @@ class Main extends ApplicationAdapter {
         autoDepthButton = createNewButton(autoDepthButtonUp, autoDepthButtonDown, autoDepthButtonChecked);
         multiplexorButton = createNewButton(multiplexorButtonFirst, multiplexorButtonSecond, multiplexorButtonPressed);
         ledButton = createNewButton(ledButtonUp, ledButtonDown, ledButtonChecked);
-
+*/
         mainStage.addActor(zSlider);
         mainStage.addActor(rSlider);
-        mainStage.addActor(speedSlider);
+        //mainStage.addActor(speedSlider);
         mainStage.addActor(xyTouchPad);
-        mainStage.addActor(rMainManipSlider);
+        /*mainStage.addActor(rMainManipSlider);
         mainStage.addActor(camSlider);
         mainStage.addActor(tBotManipSlider);
         mainStage.addActor(tightMainManipButton);
@@ -78,7 +77,7 @@ class Main extends ApplicationAdapter {
         mainStage.addActor(autoPitchButton);
         mainStage.addActor(autoYawButton);
         mainStage.addActor(multiplexorButton);
-        mainStage.addActor(ledButton);
+        mainStage.addActor(ledButton);*/
 
         setActorsSize();
         setActorsPositions();
@@ -153,7 +152,7 @@ class Main extends ApplicationAdapter {
         yAxis = (int) xyTouchPad.getKnobPercentY();
         zAxis = (int) zSlider.getValue();
         rzAxis = (int) rSlider.getValue();
-        mainManipRotateDirection = (int) rMainManipSlider.getValue();
+        /*mainManipRotateDirection = (int) rMainManipSlider.getValue();
         cameraRotateDirection = (int) camSlider.getValue();
         if (tightMainManipButton.isPressed())
             mainManipTightDirection = 1;
@@ -168,23 +167,24 @@ class Main extends ApplicationAdapter {
         isAutoYaw = autoYawButton.isChecked();
         isAutoPitch = autoPitchButton.isChecked();
         isAutoDepth = autoDepthButton.isChecked();
-        isLED = ledButton.isChecked();
+        isLED = ledButton.isChecked();*/
     }
 
     private void setZeroPositions() {
         if (!zSlider.isDragging()) zSlider.setValue(0f);
         if (!rSlider.isDragging()) rSlider.setValue(0f);
-        if (!xyTouchPad.isTouched()) xyTouchPad.calculatePositionAndValue(0, 0, true);
-        if (!rMainManipSlider.isDragging()) rMainManipSlider.setValue(0f);
+        if (!xyTouchPad.isTouched()) xyTouchPad.calculatePositionAndValue(
+                0, 0, true);
+        /*if (!rMainManipSlider.isDragging()) rMainManipSlider.setValue(0f);
         if (!camSlider.isDragging()) camSlider.setValue(0f);
-        if (!tBotManipSlider.isDragging()) tBotManipSlider.setValue(0f);
+        if (!tBotManipSlider.isDragging()) tBotManipSlider.setValue(0f);*/
     }
 
     private void setActorsSize() {
         zSlider.setSize(60,
                 Gdx.graphics.getHeight());
-        rSlider.setSize(Gdx.graphics.getWidth() - zSlider.getWidth() - 30,
-                120);
+        rSlider.setSize(Gdx.graphics.getWidth() - xyTouchPad.getHeight(),
+                60);
         xyTouchPad.setSize(Gdx.graphics.getWidth() / 2.5f,
                 Gdx.graphics.getWidth() / 2.5f);
     }
