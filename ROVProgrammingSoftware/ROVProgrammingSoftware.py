@@ -6,7 +6,6 @@ import netifaces as ni
 class GUI:
     def print_text(self, output_text):
         output = Tk.Label(self.frame, text=output_text, font="Arial 12")
-        output.pack()
 
     def __init__(self):
         self.target_ip = "192.168.1.128"
@@ -43,7 +42,7 @@ class GUI:
             return
         self.print_text("Converting hex to binary...")
         com.getoutput("rm /Users/germanberdnikov/Documents/CompiledArduinoSketches/rov.bin")
-        com.getoutput("/Applications/Work/Programming/Arduino.app/Contents/Java/hardware/tools/avr/bin/avr-objcopy "
+        com.getoutput("/Applications/Arduino.app/Contents/Java/hardware/tools/avr/bin/avr-objcopy "
                       "-I ihex ~/Documents/CompiledArduinoSketches/ROVSoftware.ino.hex -O binary "
                       "~/Documents/CompiledArduinoSketches/rov.bin")
         output = com.getoutput("ls ~/Documents/CompiledArduinoSketches")
