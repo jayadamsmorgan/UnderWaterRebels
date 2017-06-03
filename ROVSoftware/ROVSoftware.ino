@@ -4,11 +4,46 @@
 #include <Servo.h>
 #include <PID_v1.h>
 #include <SparkFun_MS5803_I2C.h>
-#include <ADXL345.h>
-#include <HMC5883L.h>
 
 typedef unsigned uint;
 typedef unsigned char uchar;
+
+//#define GY80
+#define GY89
+
+#ifdef GY89
+#include <Kalman.h>
+#include <L3G.h>
+#include <LSM303.h>
+
+#define TWI_FREQ 400000L
+
+Kalman kalmanX; // Create the Kalman instances
+Kalman kalmanY;
+
+LSM303 compass;
+L3G gyro;
+float gyroOffSet[3];
+int accOffSet[3];
+
+double accG[3];
+double gyroSpeed[3];
+double mag[3];
+
+double gyroXangle, gyroYangle; // Angle calculate using the gyro only
+double compAngleX, compAngleY; // Calculated angle using a complementary filter
+double kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
+
+uint32_t timer;
+#endif
+
+#ifdef GY80
+#include <ADXL345.h>
+#include <HMC5883L.h>
+
+ADXL345 accelerometer;
+HMC5883L compass;
+#endif
 
 #define MOTOR1PIN                45
 #define MOTOR2PIN                46
@@ -38,23 +73,22 @@ typedef unsigned char uchar;
 #define SERVO_MANIPULATOR_PIN    8
 #define SERVO_CAMERA_PIN         4
 
-#define SERVO_UPDATE_WINDOW      30   // Delay for updating servo's angle
 #define SERVO_ANGLE_DELTA        3
 
 #define MIN_CAMERA_ANGLE         20
 #define MAX_CAMERA_ANGLE         160
 
-#define MAX_BOTTOM_MANIP_ANGLE   80
+#define MAX_BOTTOM_MANIP_ANGLE   180
 #define MIN_BOTTOM_MANIP_ANGLE   0
 
 #define INCOMING_PACKET_SIZE     25
 #define OUTCOMING_PACKET_SIZE    15
 
-double PITCH_KP =               2.5;
+double PITCH_KP =               0.8;
 double PITCH_KI =               0.0;
-double PITCH_KD =               0.0;
+double PITCH_KD =               0.5;
 
-double DEPTH_KP =               2.0;
+double DEPTH_KP =               5.0;
 double DEPTH_KI =               0.0;
 double DEPTH_KD =               0.0;
 
@@ -70,10 +104,6 @@ IPAddress ip(192, 168, 1, 177), remote_device;
 char packetBuffer[INCOMING_PACKET_SIZE];
 unsigned char replyBuffer[OUTCOMING_PACKET_SIZE];
 EthernetUDP Udp;
-
-ADXL345 accelerometer;
-HMC5883L compass;
-MS5803 sensor(ADDRESS_HIGH);
 
 Servo horMotor1, horMotor2, horMotor3, horMotor4;
 Servo verMotor1, verMotor2;
@@ -109,6 +139,10 @@ bool leak[8];
 
 // Speed mode for arranging speed
 double speedK = 0.3;
+
+MS5803 sensor(ADDRESS_LOW);
+int pressureReadings[5];
+char depthCounter = 0;
 
 // PIDs for auto modes
 double pitchSetpoint, pitchInput, pitchOutput;
@@ -159,10 +193,7 @@ void controlPeripherals() {
   rotateManipulator(js_val[4]);
   tightenManipulator(manTightDir);
 
-  // Camera's servo controlling
-  unsigned long long current_time = millis();
-  
-  if (servoCamDir != 0 && (current_time - prev_camera_servo_update >= SERVO_UPDATE_WINDOW)) {
+  if (servoCamDir != 0) {
     if (servoCamDir > 0) {
       new_camera_angle += SERVO_ANGLE_DELTA;
       if (new_camera_angle > MAX_CAMERA_ANGLE)
@@ -177,11 +208,8 @@ void controlPeripherals() {
     camera.write(new_camera_angle);
     camera_angle = new_camera_angle;
   }
-  prev_camera_servo_update = millis();
 
-  // Bottom maniplulator's servo controlling
-  current_time = millis();
-  if (botManipDir != 0 && (current_time - prev_manip_servo_update >= SERVO_UPDATE_WINDOW)) {
+  if (botManipDir != 0) {
     if (botManipDir > 0) {
       new_bottom_manip_angle += SERVO_ANGLE_DELTA;
       if (new_bottom_manip_angle > MAX_BOTTOM_MANIP_ANGLE)
@@ -196,7 +224,6 @@ void controlPeripherals() {
     bottomManip.write(new_bottom_manip_angle);
     bottom_manip_angle = new_bottom_manip_angle;
   }
-  prev_manip_servo_update = millis();
 
   // Select multiplexor channel for right video out
   selectMuxChannel();
@@ -216,8 +243,8 @@ void autoPitchAndDepth() {
 
   double output1, output2;
 
-  output1 = (depthOutput + pitchOutput) / 1.5;
-  output2 = (depthOutput - pitchOutput) / 1.5;
+  output1 = (depthOutput + pitchOutput) / 2;
+  output2 = (depthOutput - pitchOutput) / 2;
 
   // Value correction:
   if (output1 > 100.0) {
@@ -273,23 +300,11 @@ void autoPitch() {
 
 // AutoDepth mode
 void autoDepth() {
-  depthSetpoint = -40;
-  depthInput = depthSetpoint - depth;
-  signed char dir = 0;
-  if (depthInput > 0) {
-    dir = 1;
-  } else {
-    dir = -1;
-  }
-  depthInput = -abs(depthInput);
+  depthInput = depth;
   autoDepthPID.Compute();
   Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
   Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
   Serial.print("Current depth is: ");        Serial.println(depth);
-
-  if (dir < 0) {
-    depthOutput = -abs(depthOutput);
-  }
 
   // Value correction:
   if (depthOutput > 100.0) {
@@ -489,8 +504,8 @@ void sendReply() {
   for (int i = 0; i < 8; ++i) {
     replyBuffer[12] |= leak[i] << i;
   }
-  replyBuffer[13] = ((uint) (new_camera_angle) >> 8) & 0xFF;
-  replyBuffer[14] = ((uint) (new_camera_angle)) & 0xFF;
+  replyBuffer[13] = ((uint) (new_bottom_manip_angle) >> 8) & 0xFF;
+  replyBuffer[14] = ((uint) (new_bottom_manip_angle)) & 0xFF;
 
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
@@ -575,6 +590,7 @@ void tightenManipulator(char dir) {
 void setup() {
   // Init I2C connection for IMU
   Wire.begin();
+  TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
 
   // Init serial port for debugging
   Serial.begin(250000);
@@ -620,26 +636,84 @@ void setup() {
   autoDepthPID.SetMode(AUTOMATIC);
   autoYawPID.SetMode(AUTOMATIC);
   pitchSetpoint = 0;
-  accelerometer.begin();
-  compass.begin();
-
   // Some delay for motors...
   delay(1000);
+#ifdef GY80
+  accelerometer.begin();
+  compass.begin();
+#endif
+#ifdef GY89
+  initCompass();
+  initgyro();
+  delay(100);
+  read_Acc();
+  read_Gyro();
+  read_Mag();
+  roll  = atan(accG[1] / sqrt(accG[0] * accG[0] + accG[2] * accG[2])) * RAD_TO_DEG;
+  pitch = atan2(-accG[0], accG[2]) * RAD_TO_DEG;
+  kalmanX.setAngle(roll); // Set starting angle
+  kalmanY.setAngle(pitch);
+  gyroXangle = roll;
+  gyroYangle = pitch;
+  compAngleX = roll;
+  compAngleY = pitch;
+  timer = micros();
+#endif
   // Retrieve calibration constants for conversion math.
   sensor.reset();
   sensor.begin();
-  pressure_baseline = sensor.getPressure(ADC_4096);
+  int setupPressure = sensor.getPressure(ADC_1024);
+  for (int i = 0; i < 5; i++) {
+    pressureReadings[i] = setupPressure;
+  }
+}
+
+void read_Acc() { //g
+  compass.read();
+  accG[0] = ((compass.a.x - accOffSet[0]) >> 4) * 0.004;
+  accG[1] = ((compass.a.y - accOffSet[1]) >> 4) * 0.004;
+  accG[2] = ((compass.a.z - accOffSet[2]) >> 4) * 0.004;
+}
+
+void read_Gyro() { //deg per s
+  gyro.read();
+  gyroSpeed[0] = (gyro.g.x - gyroOffSet[0]) * 0.07;
+  gyroSpeed[1] = (gyro.g.y - gyroOffSet[1]) * 0.07;
+  gyroSpeed[2] = (gyro.g.z - gyroOffSet[2]) * 0.07;
+}
+
+void read_Mag() { //guass  x,y 450LSB/Guass, z 400LSB/Guass
+  mag[0] = compass.m.x / 450.0;
+  mag[1] = compass.m.y / 450.0;
+  mag[2] = compass.m.z / 400.0;
+}
+
+void initCompass() {
+  compass.init();
+  compass.enableDefault();
+  compass.writeReg(LSM303::CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10; high resolution output mode
+}
+
+void initgyro() {
+  if (!gyro.init())
+  {
+    Serial.println("Failed to autodetect gyro type!");
+    while (1);
+  }
+  gyro.writeReg(L3G::CTRL_REG4, 0x20); // 2000 dps full scale, 70mdeg per LSB
+  gyro.writeReg(L3G::CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 95 Hz
 }
 
 // Function for updating depth
 void updateDepth() {
-  // Read pressure from the sensor in mbar & filter it
-  int pressureReadings[10];
-  for (int i = 0; i < 10; i++) {
-    pressureReadings[i] = sensor.getPressure(ADC_256);
+  pressureReadings[depthCounter%5] = sensor.getPressure(ADC_1024);
+  if(depthCounter >= 5) {
+    depthCounter = 0;
+  } else {
+    depthCounter++;
   }
-  for (int i = 0; i < (10 - 1); i++) {
-    for (int o = 0; o < (10 - (i + 1)); o++) {
+  for (int i = 0; i < (5 - 1); i++) {
+    for (int o = 0; o < (5 - (i + 1)); o++) {
       if (pressureReadings[o] > pressureReadings[o + 1]) {
         int t = pressureReadings[o];
         pressureReadings[o] = pressureReadings[o + 1];
@@ -648,21 +722,13 @@ void updateDepth() {
     }
   }
 
-  pressure_abs = pressureReadings[4];
-
-  // Taking our baseline pressure at the beginning we can find an approximate
-  // change in altitude based on the differences in pressure.
-  depth = altitude(pressure_abs, pressure_baseline);
-}
-
-// Given a pressure measurement P (mbar) and the pressure at a baseline P0 (mbar),
-// return altitude (meters) above baseline.
-double altitude(double P, double P0) {
-  return (44330.0 * (1 - pow(P / P0, 1 / 5.255)));
+  pressure_abs = pressureReadings[1];
+  depth = pressure_abs;
 }
 
 // Function for updating yaw, pitch, roll
 void updateYPR() {
+#ifdef GY80
   Vector mag = compass.readNormalize();
   yaw = atan2(mag.YAxis, mag.XAxis);
   yaw += declinationAngle;
@@ -705,6 +771,39 @@ void updateYPR() {
   // Swap pitch & roll because our electronic engineers are very stupid...
   roll = fpitcharray[2];
   pitch = frollarray[2];
+#endif
+#ifdef GY89
+  read_Acc();
+  read_Gyro();
+  read_Mag();
+  double dt = (double)(micros() - timer) / 1000000; // Calculate delta time
+  timer = micros();
+  roll  = atan(accG[1] / sqrt(accG[0] * accG[0] + accG[2] * accG[2])) * RAD_TO_DEG;
+  pitch = atan2(-accG[0], accG[2]) * RAD_TO_DEG;
+  double gyroXrate = gyroSpeed[0] / 131.0; // Convert to deg/s
+  double gyroYrate = gyroSpeed[1] / 131.0; // Convert to deg/s
+  // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
+  if ((pitch < -90 && kalAngleY > 90) || (pitch > 90 && kalAngleY < -90)) {
+    kalmanY.setAngle(pitch);
+    compAngleY = pitch;
+    kalAngleY = pitch;
+    gyroYangle = pitch;
+  } else
+    kalAngleY = kalmanY.getAngle(pitch, gyroYrate, dt); // Calculate the angle using a Kalman filter
+  if (abs(kalAngleY) > 90)
+    gyroXrate = -gyroXrate; // Invert rate, so it fits the restriced accelerometer reading
+  kalAngleX = kalmanX.getAngle(roll, gyroXrate, dt); // Calculate the angle using a Kalman filter
+  gyroXangle += gyroXrate * dt; // Calculate gyro angle without any filter
+  gyroYangle += gyroYrate * dt;
+
+  compAngleX = 0.93 * (compAngleX + gyroXrate * dt) + 0.07 * roll; // Calculate the angle using a Complimentary filter
+  compAngleY = 0.93 * (compAngleY + gyroYrate * dt) + 0.07 * pitch;
+  if (gyroXangle < -180 || gyroXangle > 180)
+    gyroXangle = kalAngleX;
+  if (gyroYangle < -180 || gyroYangle > 180)
+    gyroYangle = kalAngleY;
+  yaw = compass.heading();
+#endif
 }
 
 // Function to select right multiplexor channel
