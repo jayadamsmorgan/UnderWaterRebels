@@ -35,6 +35,7 @@ double compAngleX, compAngleY; // Calculated angle using a complementary filter
 double kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
 
 uint32_t timer;
+double temperature;
 #endif
 
 #ifdef GY80
@@ -78,8 +79,8 @@ HMC5883L compass;
 #define MIN_CAMERA_ANGLE         20
 #define MAX_CAMERA_ANGLE         160
 
-#define MAX_BOTTOM_MANIP_ANGLE   180
-#define MIN_BOTTOM_MANIP_ANGLE   0
+#define MAX_BOTTOM_MANIP_ANGLE   150
+#define MIN_BOTTOM_MANIP_ANGLE   30
 
 #define INCOMING_PACKET_SIZE     25
 #define OUTCOMING_PACKET_SIZE    15
@@ -92,7 +93,6 @@ double DEPTH_KP =               5.0;
 double DEPTH_KI =               0.0;
 double DEPTH_KD =               0.0;
 
-double YAW_KP1  =               0.0001;
 double YAW_KP   =               2.0;
 double YAW_KI   =               0.0;
 double YAW_KD   =               0.0;
@@ -150,7 +150,7 @@ PID autoPitchPID(&pitchInput, &pitchOutput, &pitchSetpoint, PITCH_KP, PITCH_KI, 
 double depthSetpoint, depthInput, depthOutput;
 PID autoDepthPID(&depthInput, &depthOutput, &depthSetpoint, DEPTH_KP, DEPTH_KI, DEPTH_KD, DIRECT);
 double yawSetpoint, yawInput, yawOutput;
-PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP1, YAW_KI, YAW_KD, DIRECT);
+PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRECT);
 
 // Function for controlling motor system
 void controlPeripherals() {
@@ -167,8 +167,8 @@ void controlPeripherals() {
     autoDepth();
   } else {
     // Set vertical thrust
-    verticalMotorControl(verMotor1, -js_val[2]);
-    verticalMotorControl(verMotor2, js_val[2]);
+    verticalMotorControl(verMotor1, js_val[2]);
+    verticalMotorControl(verMotor2, -js_val[2]);
 
     // Set target for AutoDepth
     depthSetpoint = depth;
@@ -180,10 +180,10 @@ void controlPeripherals() {
     autoYaw();
   } else {
     // Set horizontal thrust
-    horizontalMotorControl(horMotor1, js_val[0], -js_val[1], -js_val[3]);
-    horizontalMotorControl(horMotor2, js_val[0], js_val[1], -js_val[3]);
-    horizontalMotorControl(horMotor3, js_val[0], -js_val[1], js_val[3]);
-    horizontalMotorControl(horMotor4, -js_val[0], -js_val[1], -js_val[3]);
+    horizontalMotorControl(horMotor1, -js_val[0], js_val[1], js_val[3], false);
+    horizontalMotorControl(horMotor2, js_val[0], js_val[1], -js_val[3], false);
+    horizontalMotorControl(horMotor3, js_val[0], -js_val[1], js_val[3], false);
+    horizontalMotorControl(horMotor4, -js_val[0], -js_val[1], -js_val[3], false);
 
     // Set target for AutoYaw
     yawSetpoint = yaw;
@@ -235,16 +235,16 @@ void controlPeripherals() {
 // AutoPitch & AutoDepth mode
 void autoPitchAndDepth() {
 
-  depthInput = depthSetpoint - depth;
+  depthInput = depth;
   pitchInput = pitch;
 
   autoPitchPID.Compute();
-  autoDepthPID.Compute();
+  autoDepthPID.Compute(); 
 
   double output1, output2;
 
-  output1 = (depthOutput + pitchOutput) / 2;
-  output2 = (depthOutput - pitchOutput) / 2;
+  output1 = depthOutput + pitchOutput;
+  output2 = - depthOutput + pitchOutput;
 
   // Value correction:
   if (output1 > 100.0) {
@@ -260,28 +260,15 @@ void autoPitchAndDepth() {
     output2 = -100.0;
   }
 
-  verticalMotorControl(verMotor1, (char) - output1);
+  verticalMotorControl(verMotor1, (char) output1);
   verticalMotorControl(verMotor2, (char) output2);
 }
 
 // AutoPitch mode
 void autoPitch() {
-  // Some PID magic, some bad coding....... Do not try to understand that.......
   pitchInput = pitch;
   Serial.print("Rotation angle: "); Serial.println(pitchInput);
-  signed char dir = 0;
-  if (pitchInput > 0) {
-    dir = 1;
-  } else {
-    dir = -1;
-  }
-  pitchInput = -abs(pitchInput);
   autoPitchPID.Compute();
-
-  if (dir < 0) {
-    pitchOutput = -abs(pitchOutput);
-  }
-  // ...........
 
   // Value correction:
   if (pitchOutput > 100.0) {
@@ -294,8 +281,8 @@ void autoPitch() {
   Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
   Serial.print("Current pitch is: ");        Serial.println(pitch);
 
-  verticalMotorControl(verMotor1, (char) pitchOutput);
-  verticalMotorControl(verMotor2, (char) pitchOutput);
+  verticalMotorControl(verMotor1, (char) -pitchOutput);
+  verticalMotorControl(verMotor2, (char) -pitchOutput);
 }
 
 // AutoDepth mode
@@ -314,50 +301,23 @@ void autoDepth() {
     depthOutput = -100.0;
   }
 
-  verticalMotorControl(verMotor1, (char) - depthOutput);
-  verticalMotorControl(verMotor2, (char) depthOutput);
+  verticalMotorControl(verMotor1, (char) depthOutput);
+  verticalMotorControl(verMotor2, (char) - depthOutput);
 }
 
 // AutoYaw mode
 void autoYaw() {
-  // Some PID magic, some bad coding....... Do not try to understand that.......
-  yawInput = rotationAngle(yaw, yawSetpoint);
+  yawInput = yaw;
   Serial.print("Rotation angle: "); Serial.println(yawInput);
-  if (yawInput > -0.50 && yawInput < 0.50) {
-    return;
-  }
-  signed char dir = 0;
-  if (yawInput > 0) {
-    dir = 1;
-  } else {
-    dir = -1;
-  }
-  yawInput = -abs(yawInput);
   autoYawPID.Compute();
-  if (dir < 0) {
-    yawOutput = -abs(yawOutput);
-  }
-  double val = yawOutput * 5000;
-  if (dir == 0) {
-    val = 0;
-  }
-  if (dir > 0) {
-    val -= yawSetpoint / 2;
-  }
-  if (dir < 0) {
-    val += yawSetpoint / 2;
-  }
-  val *= YAW_KP;
-  // .......
-
-  Serial.print("AutoYaw PID output is: "); Serial.println(val);
+  Serial.print("AutoYaw PID output is: "); Serial.println(yawOutput);
   Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
   Serial.print("Current yaw is: ");        Serial.println(yaw);
 
-  horizontalMotorControl(horMotor1, 0, 0, val);
-  horizontalMotorControl(horMotor2, 0, 0, -val);
-  horizontalMotorControl(horMotor3, 0, 0, val);
-  horizontalMotorControl(horMotor4, 0, 0, -val);
+  horizontalMotorControl(horMotor1, 0, 0, yawOutput, true);
+  horizontalMotorControl(horMotor2, 0, 0, -yawOutput, true);
+  horizontalMotorControl(horMotor3, 0, 0, yawOutput, true);
+  horizontalMotorControl(horMotor4, 0, 0, -yawOutput, true);
 }
 
 // Function for correct angles for PID (calcuating minimal angle for rotation)
@@ -449,10 +409,8 @@ char receiveMessage() {
     isLED = (packetBuffer[6] >> 6) & 1;
     Serial.print("isLED: "); Serial.println(isLED);
 
-    //getK();
+    getK();
     // ENDING PARSING PACKET ********
-
-    //setK();
 
     return 1;
   } else {
@@ -462,26 +420,22 @@ char receiveMessage() {
 
 // Function to get koefficients from packetBuffer
 void getK() {
-  YAW_KP = (double) bytesToUInt(packetBuffer[7], packetBuffer[8]) / 10000;
-  YAW_KI = (double) bytesToUInt(packetBuffer[9], packetBuffer[10]) / 10000;
-  YAW_KD = (double) bytesToUInt(packetBuffer[11], packetBuffer[12]) / 10000;
-  PITCH_KP = (double) bytesToUInt(packetBuffer[13], packetBuffer[14]) / 10000;
-  PITCH_KI = (double) bytesToUInt(packetBuffer[15], packetBuffer[16]) / 10000;
-  PITCH_KD = (double) bytesToUInt(packetBuffer[17], packetBuffer[18]) / 10000;
-  DEPTH_KP = (double) bytesToUInt(packetBuffer[19], packetBuffer[20]) / 10000;
-  DEPTH_KI = (double) bytesToUInt(packetBuffer[21], packetBuffer[22]) / 10000;
-  DEPTH_KD = (double) bytesToUInt(packetBuffer[23], packetBuffer[24]) / 10000;
+  YAW_KP = (double) (bytesToUInt(packetBuffer[7], packetBuffer[8]) / 1000);
+  YAW_KI = (double) (bytesToUInt(packetBuffer[9], packetBuffer[10]) / 1000);
+  YAW_KD = (double) (bytesToUInt(packetBuffer[11], packetBuffer[12]) / 1000);
+  PITCH_KP = (double) (bytesToUInt(packetBuffer[13], packetBuffer[14]) / 1000);
+  PITCH_KI = (double) (bytesToUInt(packetBuffer[15], packetBuffer[16]) / 1000);
+  PITCH_KD = (double) (bytesToUInt(packetBuffer[17], packetBuffer[18]) / 1000);
+  DEPTH_KP = (double) (bytesToUInt(packetBuffer[19], packetBuffer[20]) / 1000);
+  DEPTH_KI = (double) (bytesToUInt(packetBuffer[21], packetBuffer[22]) / 1000);
+  DEPTH_KD = (double) (bytesToUInt(packetBuffer[23], packetBuffer[24]) / 1000);
+  autoPitchPID.SetTunings(PITCH_KP, PITCH_KI, PITCH_KD);
+  autoYawPID.SetTunings(YAW_KP, YAW_KI, YAW_KD);
+  autoDepthPID.SetTunings(DEPTH_KP, DEPTH_KI, DEPTH_KD);
 }
 
 int bytesToUInt(byte firstByte, byte secondByte) {
   return (static_cast<uint>(static_cast<uchar>(secondByte)) << 8 ) | static_cast<uint>(static_cast<uchar>(firstByte));
-}
-
-// Function to set values for PIDs
-void setK() {
-  autoPitchPID.SetTunings(PITCH_KP, PITCH_KI, PITCH_KD);
-  autoYawPID.SetTunings(YAW_KP1, YAW_KI, YAW_KD);
-  autoDepthPID.SetTunings(DEPTH_KP, DEPTH_KI, DEPTH_KD);
 }
 
 // Forming & sending packet to PC via UDP
@@ -504,9 +458,10 @@ void sendReply() {
   for (int i = 0; i < 8; ++i) {
     replyBuffer[12] |= leak[i] << i;
   }
-  replyBuffer[13] = ((uint) (new_bottom_manip_angle) >> 8) & 0xFF;
-  replyBuffer[14] = ((uint) (new_bottom_manip_angle)) & 0xFF;
-
+#ifdef GY89
+  replyBuffer[13] = ((uint) (temperature) >> 8) & 0xFF;
+  replyBuffer[14] = ((uint) (temperature)) & 0xFF;
+#endif
   Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
   Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
@@ -517,12 +472,13 @@ void sendReply() {
 }
 
 // Function to control horizontal brushless motors
-void horizontalMotorControl(Servo motor, short x, short y, short z) {
+void horizontalMotorControl(Servo motor, short x, short y, short z, bool isAuto) {
   int POW = 0;
   int sum = x + y + z;
   if (sum > 100.0) sum = 100.00;
   if (sum < (-100.0)) sum = -100.00;
-  POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
+  if (isAuto) POW = int((sum * (MOTORRANGE / 100.0)));
+  else POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
   Serial.print("Horizontal motor pow: "); Serial.println(POW);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
@@ -628,13 +584,16 @@ void setup() {
   new_camera_angle = 120;
   camera.write(new_camera_angle);
   bottomManip.attach(SERVO_MANIPULATOR_PIN);
-  new_bottom_manip_angle = 80;
+  new_bottom_manip_angle = 150;
   bottomManip.write(new_bottom_manip_angle);
 
   // Init PID settings
   autoPitchPID.SetMode(AUTOMATIC);
+  autoPitchPID.SetOutputLimits(-5000, 5000);
   autoDepthPID.SetMode(AUTOMATIC);
+  autoDepthPID.SetOutputLimits(-5000, 5000);
   autoYawPID.SetMode(AUTOMATIC);
+  autoYawPID.SetOutputLimits(-5000, 5000);
   pitchSetpoint = 0;
   // Some delay for motors...
   delay(1000);
@@ -662,14 +621,19 @@ void setup() {
   // Retrieve calibration constants for conversion math.
   sensor.reset();
   sensor.begin();
-  int setupPressure = sensor.getPressure(ADC_1024);
+  int setupPressure = sensor.getPressure(ADC_2048);
   for (int i = 0; i < 5; i++) {
     pressureReadings[i] = setupPressure;
   }
+  depthSetpoint = setupPressure;
 }
 
 void read_Acc() { //g
   compass.read();
+  byte tl = compass.readReg(LSM303::TEMP_OUT_L);
+  byte th = compass.readReg(LSM303::TEMP_OUT_H);
+  int temperature_raw = (int16_t)(th << 8 | tl);
+  temperature = (double) temperature_raw / 8 + 20;
   accG[0] = ((compass.a.x - accOffSet[0]) >> 4) * 0.004;
   accG[1] = ((compass.a.y - accOffSet[1]) >> 4) * 0.004;
   accG[2] = ((compass.a.z - accOffSet[2]) >> 4) * 0.004;
@@ -706,8 +670,8 @@ void initgyro() {
 
 // Function for updating depth
 void updateDepth() {
-  pressureReadings[depthCounter%5] = sensor.getPressure(ADC_1024);
-  if(depthCounter >= 5) {
+  pressureReadings[depthCounter % 5] = sensor.getPressure(ADC_2048);
+  if (depthCounter >= 5) {
     depthCounter = 0;
   } else {
     depthCounter++;
