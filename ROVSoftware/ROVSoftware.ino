@@ -57,9 +57,10 @@ HMC5883L compass;
 #define MOTORHIGHMICROSECONDS    1510
 #define MOTORRANGE               500
 
-#define HIGH_SPEED_K             1.0
-#define MID_SPEED_K              0.5
-#define LOW_SPEED_K              0.17
+#define TURBO_SPEED_K            1.0
+#define HIGH_SPEED_K             0.5
+#define MID_SPEED_K              0.25
+#define LOW_SPEED_K              0.10
 
 #define MAIN_MANIP_ROT_PINA      9
 #define MAIN_MANIP_ROT_PINB      14
@@ -156,14 +157,11 @@ PID autoYawPID(&yawInput, &yawOutput, &yawSetpoint, YAW_KP, YAW_KI, YAW_KD, DIRE
 void controlPeripherals() {
   // Auto modes realization:
   if (isAutoPitch && isAutoDepth && js_val[2] == 0) {
-    Serial.println("Using AutoPitch & AutoDepth mode");
     autoPitchAndDepth();
   } else if (isAutoPitch && js_val[2] == 0) {
-    Serial.println("Using AutoPitch mode");
     autoPitch();
     depthSetpoint = depth; // Set target for AutoDepth
   } else if (isAutoDepth && js_val[2] == 0) {
-    Serial.println("Using AutoDepth mode");
     autoDepth();
   } else {
     // Set vertical thrust
@@ -176,7 +174,6 @@ void controlPeripherals() {
 
   // AutoYaw mode realization:
   if (isAutoYaw && js_val[0] == 0 && js_val[1] == 0 && js_val[3] == 0) {
-    Serial.println("Using AutoYaw mode");
     autoYaw();
   } else {
     // Set horizontal thrust
@@ -267,7 +264,6 @@ void autoPitchAndDepth() {
 // AutoPitch mode
 void autoPitch() {
   pitchInput = pitch;
-  Serial.print("Rotation angle: "); Serial.println(pitchInput);
   autoPitchPID.Compute();
 
   // Value correction:
@@ -277,9 +273,6 @@ void autoPitch() {
   if (pitchOutput < -100.0) {
     pitchOutput = -100.0;
   }
-  Serial.print("AutoPitch PID output is: "); Serial.println(pitchOutput);
-  Serial.print("Target pitch is: ");         Serial.println(pitchSetpoint);
-  Serial.print("Current pitch is: ");        Serial.println(pitch);
 
   verticalMotorControl(verMotor1, (char) -pitchOutput);
   verticalMotorControl(verMotor2, (char) -pitchOutput);
@@ -289,9 +282,6 @@ void autoPitch() {
 void autoDepth() {
   depthInput = depth;
   autoDepthPID.Compute();
-  Serial.print("AutoDepth PID output is: "); Serial.println(depthOutput);
-  Serial.print("Target depth is: ");         Serial.println(depthSetpoint);
-  Serial.print("Current depth is: ");        Serial.println(depth);
 
   // Value correction:
   if (depthOutput > 100.0) {
@@ -308,12 +298,7 @@ void autoDepth() {
 // AutoYaw mode
 void autoYaw() {
   yawInput = yaw;
-  Serial.print("Rotation angle: "); Serial.println(yawInput);
   autoYawPID.Compute();
-  Serial.print("AutoYaw PID output is: "); Serial.println(yawOutput);
-  Serial.print("Target yaw is: ");         Serial.println(yawSetpoint);
-  Serial.print("Current yaw is: ");        Serial.println(yaw);
-
   horizontalMotorControl(horMotor1, 0, 0, yawOutput, true);
   horizontalMotorControl(horMotor2, 0, 0, -yawOutput, true);
   horizontalMotorControl(horMotor3, 0, 0, yawOutput, true);
@@ -334,24 +319,17 @@ double rotationAngle(double currentAngle, double targetAngle) {
 // Receiving messages from PC & parsing
 char receiveMessage() {
   int packetSize = Udp.parsePacket();
-  if (packetSize > 0) {
-    Serial.print("Received packet of size: ");
-    Serial.println(packetSize);
-  }
   if (packetSize == INCOMING_PACKET_SIZE) {
-    Serial.println("Size is correct.");
     remote_device = Udp.remoteIP();
     Udp.read(packetBuffer, INCOMING_PACKET_SIZE);
 
     // STARTING PARSING PACKET ********
     for (int i = 0; i < 5; ++i)  {
       js_val[i] = (signed char)packetBuffer[i];
-      Serial.print("js"); Serial.print(i); Serial.print(": "); Serial.println(js_val[i]);
     }
     js_val[2] = -js_val[2];
     for (int i = 0; i < 8; ++i) {
       buttons[i] = (packetBuffer[5] >> i) & 1;
-      Serial.print("btn"); Serial.print(i); Serial.print(": "); Serial.println(buttons[i]);
     }
 
     if (buttons[0] == 0 && buttons[1] == 1) {
@@ -388,17 +366,15 @@ char receiveMessage() {
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
 
-    if (bit1) {
-      Serial.println("Using high-speed mode");
+    if (bit1 && bit2 && bit3) {
+      speedK = TURBO_SPEED_K;
+    } else if (bit1) {
       speedK = HIGH_SPEED_K;
     } else if (bit2) {
-      Serial.println("Using mid-speed mode");
       speedK = MID_SPEED_K;
     } else if (bit3) {
-      Serial.println("Using low-speed mode");
       speedK = LOW_SPEED_K;
     } else {
-      Serial.println("Using mid-speed mode");
       speedK = MID_SPEED_K;
     }
 
@@ -407,7 +383,6 @@ char receiveMessage() {
     isAutoYaw = (packetBuffer[6] >> 5) & 1;
 
     isLED = (packetBuffer[6] >> 6) & 1;
-    Serial.print("isLED: "); Serial.println(isLED);
 
     getK();
     // ENDING PARSING PACKET ********
@@ -440,9 +415,6 @@ int bytesToUInt(byte firstByte, byte secondByte) {
 
 // Forming & sending packet to PC via UDP
 void sendReply() {
-  Serial.print("PC is on :"); Serial.println(remote_device);
-
-  Serial.println("Forming packet...");
   replyBuffer[0]  = ((int) (yaw * 100.00) >> 8) & 0xFF;
   replyBuffer[1]  = ((int) (yaw * 100.00)) & 0xFF;
   replyBuffer[2]  = ((int) (pitch * 100.00) >> 8) & 0xFF;
@@ -462,12 +434,9 @@ void sendReply() {
   replyBuffer[13] = ((uint) (temperature) >> 8) & 0xFF;
   replyBuffer[14] = ((uint) (temperature)) & 0xFF;
 #endif
-  Serial.println("Replying...");
   Udp.beginPacket(remote_device, Udp.remotePort());
-  Serial.println(Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE));
-  Serial.println("Writing packet...");
+  Udp.write(replyBuffer, OUTCOMING_PACKET_SIZE);
   Udp.endPacket();
-  Serial.println("Endpacket...");
   return;
 }
 
@@ -479,7 +448,6 @@ void horizontalMotorControl(Servo motor, short x, short y, short z, bool isAuto)
   if (sum < (-100.0)) sum = -100.00;
   if (isAuto) POW = int((sum * (MOTORRANGE / 100.0)));
   else POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
-  Serial.print("Horizontal motor pow: "); Serial.println(POW);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
@@ -497,8 +465,7 @@ void verticalMotorControl(Servo motor, short z) {
   int sum = z;
   if (sum > 100.0) sum = 100.0;
   if (sum < (-100.0)) sum = -100.0;
-  POW = int((sum * (MOTORRANGE / 100.0)));
-  Serial.print("Vertical motor pow: "); Serial.println(POW);
+  POW = int((sum * (MOTORRANGE / 100.0)) * speedK);
   if (POW == 0) {
     motor.writeMicroseconds(MOTORMIDMICROSECONDS);
   }
@@ -548,9 +515,6 @@ void setup() {
   Wire.begin();
   TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
 
-  // Init serial port for debugging
-  Serial.begin(250000);
-
   // Init brushless motors
   horMotor1.attach(MOTOR1PIN);
   horMotor2.attach(MOTOR2PIN);
@@ -567,7 +531,7 @@ void setup() {
   verMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
   delay(5000);
 
-  // Ethernet & Serial port init
+  // Ethernet init
   Ethernet.begin(mac, ip);
   Udp.begin(8000);
 
@@ -661,7 +625,6 @@ void initCompass() {
 void initgyro() {
   if (!gyro.init())
   {
-    Serial.println("Failed to autodetect gyro type!");
     while (1);
   }
   gyro.writeReg(L3G::CTRL_REG4, 0x20); // 2000 dps full scale, 70mdeg per LSB
