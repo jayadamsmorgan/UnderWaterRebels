@@ -6,7 +6,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 
 /**
- *     UDP Thread for UDP connection with ROVFirstPilot program (see in "UnderwaterRebels" GitHub)...
+ * UDP Thread for UDP connection with Underwater Vehicle (see in "UnderwaterRebels" GitHub)...
  */
 
 class UDPThread extends Thread {
@@ -14,14 +14,15 @@ class UDPThread extends Thread {
     private boolean isRunning;
     private DatagramSocket socket;
     private byte data[];
-    private int ip1 = 192, ip2 = 168, ip3 = 1, ip4 = 124;
-    private int packet_size = 7;
-    private int serverPort = 8001;
+    private int ip1 = 192, ip2 = 168, ip3 = 1, ip4 = 177;
+    private int packet_size = 25;
+    private int serverPort = 8000;
+    private int delay = 150; // Delay in ms
+    private long previousDataSendTime;
 
     UDPThread() {
         // Init some vars...
         isRunning = true;
-        data = new byte[packet_size];
     }
 
     // Function for toggling on/off udp connection
@@ -34,6 +35,7 @@ class UDPThread extends Thread {
                  int rotCam, int manTight, int botMan, int speedMode, int muxChannel,
                  boolean isAutoYaw, boolean isAutoPitch, boolean isAutoDepth, boolean isLED) {
         // Values are from -100 to 100, so we can use 1 byte to send every axis
+        data = new byte[packet_size];
         data[0] = (byte) xAxis;
         data[1] = (byte) yAxis;
         data[2] = (byte) zAxis;
@@ -61,11 +63,13 @@ class UDPThread extends Thread {
             data[5] |= (byte) 0b10000000;
         }
 
-        if (speedMode == 3) {
+        if (speedMode == 0) {
+            data[6] |= (byte) 0b00000000;
+        } else if (speedMode == 1) {
             data[6] |= (byte) 0b00000001;
         } else if (speedMode == 2) {
             data[6] |= (byte) 0b00000010;
-        } else if (speedMode == 1) {
+        } else if (speedMode == 3) {
             data[6] |= (byte) 0b00000100;
         }
         if (isAutoYaw) {
@@ -90,8 +94,12 @@ class UDPThread extends Thread {
             InetAddress address = InetAddress.getByAddress(new byte[]{(byte) ip1, (byte) ip2, (byte) ip3, (byte) ip4});
             while (true) {
                 while (isRunning) {
-                    DatagramPacket packet = new DatagramPacket(data, packet_size, address, serverPort);
-                    socket.send(packet);
+                    long currentDataSendTime = System.currentTimeMillis();
+                    if (data != null &&  currentDataSendTime - previousDataSendTime >= delay) {
+                        previousDataSendTime = currentDataSendTime;
+                        DatagramPacket packet = new DatagramPacket(data, packet_size, address, serverPort);
+                        socket.send(packet);
+                    }
                 }
             }
         } catch (IOException e) {

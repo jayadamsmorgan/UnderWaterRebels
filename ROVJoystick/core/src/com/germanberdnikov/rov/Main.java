@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Slider;
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 
+
 class Main extends ApplicationAdapter {
     // UDPThread for udp connection with PC
     private UDPThread udpThread;
@@ -19,6 +20,7 @@ class Main extends ApplicationAdapter {
     // UI objects:
     private SpriteBatch batch;
     private Stage mainStage;
+    private Image background;
     private Slider zSlider, rSlider, rMainManipSlider, camSlider, tBotManipSlider, speedSlider;
     private CustomTouchPad xyTouchPad;
     private Button tightMainManipButton, untightMainManipButton,
@@ -37,18 +39,20 @@ class Main extends ApplicationAdapter {
         batch = new SpriteBatch();
         mainStage = new Stage();
 
+        background = new Image(new Texture(Gdx.files.internal(backgroundPath)));
+
         zSlider = createNewSlider(zSliderBackground, zSliderKnob,
                 -100f, 100f, 1f, true);
 
-        /*speedSlider = createNewSlider(speedSliderBackground, speedSliderKnob,
+        speedSlider = createNewSlider(speedSliderBackground, speedSliderKnob,
                 0f, 3f, 1f, false);
-                */
+
         rSlider = createNewSlider(rSliderBackground, rSliderKnob,
                 -100f, 100f, 1f, false);
 
         xyTouchPad = createNewTouchPad(xyTouchPadBackground, xyTouchPadKnob, 5f);
 
-        /*rMainManipSlider = createNewSlider(rMainManipSliderBackground, rMainManipSliderKnob,
+        rMainManipSlider = createNewSlider(rMainManipSliderBackground, rMainManipSliderKnob,
                 -1f, 1f, 1f, false);
 
         camSlider = createNewSlider(camSliderBackground, camSliderKnob,
@@ -63,12 +67,13 @@ class Main extends ApplicationAdapter {
         autoDepthButton = createNewButton(autoDepthButtonUp, autoDepthButtonDown, autoDepthButtonChecked);
         multiplexorButton = createNewButton(multiplexorButtonFirst, multiplexorButtonSecond, multiplexorButtonPressed);
         ledButton = createNewButton(ledButtonUp, ledButtonDown, ledButtonChecked);
-*/
+
+        mainStage.addActor(background);
         mainStage.addActor(zSlider);
         mainStage.addActor(rSlider);
-        //mainStage.addActor(speedSlider);
+        mainStage.addActor(speedSlider);
         mainStage.addActor(xyTouchPad);
-        /*mainStage.addActor(rMainManipSlider);
+        mainStage.addActor(rMainManipSlider);
         mainStage.addActor(camSlider);
         mainStage.addActor(tBotManipSlider);
         mainStage.addActor(tightMainManipButton);
@@ -77,7 +82,7 @@ class Main extends ApplicationAdapter {
         mainStage.addActor(autoPitchButton);
         mainStage.addActor(autoYawButton);
         mainStage.addActor(multiplexorButton);
-        mainStage.addActor(ledButton);*/
+        mainStage.addActor(ledButton);
 
         setActorsSize();
         setActorsPositions();
@@ -148,11 +153,12 @@ class Main extends ApplicationAdapter {
     }
 
     private void prepareData() {
-        xAxis = (int) xyTouchPad.getKnobPercentX();
-        yAxis = (int) xyTouchPad.getKnobPercentY();
+        xAxis = (int) (xyTouchPad.getKnobPercentX() * 100f);
+        yAxis = (int) (xyTouchPad.getKnobPercentY() * 100f);
+
         zAxis = (int) zSlider.getValue();
         rzAxis = (int) rSlider.getValue();
-        /*mainManipRotateDirection = (int) rMainManipSlider.getValue();
+        mainManipRotateDirection = (int) rMainManipSlider.getValue();
         cameraRotateDirection = (int) camSlider.getValue();
         if (tightMainManipButton.isPressed())
             mainManipTightDirection = 1;
@@ -167,32 +173,64 @@ class Main extends ApplicationAdapter {
         isAutoYaw = autoYawButton.isChecked();
         isAutoPitch = autoPitchButton.isChecked();
         isAutoDepth = autoDepthButton.isChecked();
-        isLED = ledButton.isChecked();*/
+        isLED = ledButton.isChecked();
     }
 
     private void setZeroPositions() {
         if (!zSlider.isDragging()) zSlider.setValue(0f);
         if (!rSlider.isDragging()) rSlider.setValue(0f);
         if (!xyTouchPad.isTouched()) xyTouchPad.calculatePositionAndValue(
-                0, 0, true);
-        /*if (!rMainManipSlider.isDragging()) rMainManipSlider.setValue(0f);
+                0f, 0f, true);
+        if (!rMainManipSlider.isDragging()) rMainManipSlider.setValue(0f);
         if (!camSlider.isDragging()) camSlider.setValue(0f);
-        if (!tBotManipSlider.isDragging()) tBotManipSlider.setValue(0f);*/
+        if (!tBotManipSlider.isDragging()) tBotManipSlider.setValue(0f);
     }
 
     private void setActorsSize() {
-        zSlider.setSize(60,
-                Gdx.graphics.getHeight());
-        rSlider.setSize(Gdx.graphics.getWidth() - xyTouchPad.getHeight(),
-                60);
-        xyTouchPad.setSize(Gdx.graphics.getWidth() / 2.5f,
-                Gdx.graphics.getWidth() / 2.5f);
+        zSlider.setSize(zSlider.getWidth(),
+                Gdx.graphics.getHeight() - 40f);
+        xyTouchPad.setSize(Gdx.graphics.getWidth() / 3f,
+                Gdx.graphics.getWidth() / 3f);
+        rSlider.setSize(Gdx.graphics.getWidth() - xyTouchPad.getWidth() - zSlider.getWidth() - 40f,
+                rSlider.getHeight());
+        speedSlider.setSize(rSlider.getWidth() / 3f, rSlider.getHeight());
+        rMainManipSlider.setSize(speedSlider.getWidth(), speedSlider.getHeight());
+        camSlider.setSize(speedSlider.getHeight(), speedSlider.getWidth());
+        tBotManipSlider.setSize(camSlider.getWidth(), camSlider.getHeight());
+        tightMainManipButton.setSize(rMainManipSlider.getWidth() / 2f - 20f,
+                rMainManipSlider.getWidth() / 2f - 20f);
+        untightMainManipButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
+        autoDepthButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
+        autoPitchButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
+        autoYawButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
+        multiplexorButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
+        ledButton.setSize(tightMainManipButton.getWidth(), tightMainManipButton.getHeight());
     }
 
     private void setActorsPositions() {
-        zSlider.setPosition(Gdx.graphics.getWidth() - zSlider.getWidth(), 0);
-        xyTouchPad.setPosition(0, 0);
-        rSlider.setPosition(xyTouchPad.getWidth() + 20, 0);
+        zSlider.setPosition(Gdx.graphics.getWidth() - zSlider.getWidth() - 20f, 20f);
+        xyTouchPad.setPosition(20f, 20f);
+        rSlider.setPosition(xyTouchPad.getWidth() + 20f, 20f);
+        speedSlider.setPosition(Gdx.graphics.getWidth() - zSlider.getWidth()
+                - speedSlider.getWidth() - 50f, Gdx.graphics.getHeight() - speedSlider.getHeight() - 20f);
+        rMainManipSlider.setPosition(xyTouchPad.getWidth() + 60f, xyTouchPad.getHeight() + 20f);
+        camSlider.setPosition(speedSlider.getX() + speedSlider.getWidth() - camSlider.getWidth(),
+                speedSlider.getY() - 20f - camSlider.getHeight());
+        tBotManipSlider.setPosition(camSlider.getX() - 20f - tBotManipSlider.getWidth(), camSlider.getY());
+        tightMainManipButton.setPosition(rMainManipSlider.getX(), rMainManipSlider.getY()
+                - tightMainManipButton.getHeight() - 20f);
+        untightMainManipButton.setPosition(tightMainManipButton.getX() + tightMainManipButton.getHeight()
+                + 20f, tightMainManipButton.getY());
+        autoYawButton.setPosition(20f, Gdx.graphics.getHeight() - 20f - autoYawButton.getHeight());
+        autoPitchButton.setPosition(40f + autoYawButton.getWidth(),
+                Gdx.graphics.getHeight() - 20f - autoYawButton.getHeight());
+        autoDepthButton.setPosition(60f + autoPitchButton.getWidth() * 2f,
+                Gdx.graphics.getHeight() - 20f - autoYawButton.getHeight());
+        multiplexorButton.setPosition(autoYawButton.getX(),
+                autoYawButton.getY() - 20f - multiplexorButton.getHeight());
+        ledButton.setPosition(autoDepthButton.getX(),
+                autoDepthButton.getY() - 20f - ledButton.getHeight());
+
     }
 
     @Override
@@ -211,6 +249,7 @@ class Main extends ApplicationAdapter {
     }
 
     // Paths:
+    private String backgroundPath = "ui/background.png";
     private String zSliderBackground = "ui/sliders/zSlider/zSliderBackground.png";
     private String zSliderKnob = "ui/sliders/zSlider/zSliderKnob.png";
     private String speedSliderBackground = "ui/sliders/speedSlider/speedSliderBackground.png";
@@ -219,9 +258,9 @@ class Main extends ApplicationAdapter {
     private String rSliderKnob = "ui/sliders/rSlider/rSliderKnob.png";
     private String xyTouchPadBackground = "ui/touchPads/xyTouchPad/xyTouchPadBackground.png";
     private String xyTouchPadKnob = "ui/touchPads/xyTouchPad/xyTouchPadKnob.png";
-    private String rMainManipSliderBackground = "ui/sliders/rMainManipSlider/rMainManipSliderBackround.png";
+    private String rMainManipSliderBackground = "ui/sliders/rMainManipSlider/rMainManipSliderBackground.png";
     private String rMainManipSliderKnob = "ui/sliders/rMainManipSlider/rMainManipSliderKnob.png";
-    private String camSliderBackground = "ui/sliders/camSlider/camSliderBackround.png";
+    private String camSliderBackground = "ui/sliders/camSlider/camSliderBackground.png";
     private String camSliderKnob = "ui/sliders/camSlider/camSliderKnob.png";
     private String tBotManipSliderBackground = "ui/sliders/tBotManipSlider/tBotManipSliderBackground.png";
     private String tBotManipSliderKnob = "ui/sliders/tBotManipSlider/tBotManipSliderKnob.png";
@@ -239,9 +278,9 @@ class Main extends ApplicationAdapter {
     private String autoDepthButtonDown = "ui/buttons/autoDepthButton/autoDepthButtonDown.png";
     private String autoDepthButtonChecked = "ui/buttons/autoDepthButton/autoDepthButtonChecked.png";
     private String multiplexorButtonFirst = "ui/buttons/multiplexorButton/multiplexorButtonFirst.png";
-    private String multiplexorButtonPressed = "ui/buttons/multiplexorButton/multiplexorButtonPressed.png";
-    private String multiplexorButtonSecond = "ui/buttons/multiplexorButton/multiplexorButtonSecond.png";
+    private String multiplexorButtonPressed = "ui/buttons/multiplexorButton/multiplexorButtonSecond.png";
+    private String multiplexorButtonSecond = "ui/buttons/multiplexorButton/multiplexorButtonPressed.png";
     private String ledButtonUp = "ui/buttons/ledButton/ledButtonUp.png";
     private String ledButtonDown = "ui/buttons/ledButton/ledButtonDown.png";
-    private String ledButtonChecked = "ui/buttons/ledButton/ledButtonChecked.png";
+    private String ledButtonChecked = "ui/buttons/ledButton/ledButtonPressed.png";
 }
