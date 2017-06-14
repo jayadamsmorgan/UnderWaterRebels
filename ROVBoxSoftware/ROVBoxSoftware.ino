@@ -43,7 +43,8 @@ void setup() {
   Serial.begin(115200);
 
   // Pins init
-  pinMode(pinA, INPUT);
+  pinMode(pinA, INPUT_PULLUP);
+  digitalWrite(pinA, HIGH);
   pinMode(pinV, INPUT);
   pinMode(pinPWM_OUT, OUTPUT);
   attachInterrupt(0, rpm_fan, FALLING);
@@ -112,6 +113,7 @@ int updateCurrent() {
   } else {
     returnableValue = (int) value;
   }
+  value += 3;
   return value;
 }
 
@@ -181,7 +183,7 @@ void loop() {
   if (current > 20 || voltage > 13 || temp > 45) {
     alarm();
   } else {
-    lcd.noBacklight();
+    lcd.backlight();
   }
 
   // Update values one time in 500ms
