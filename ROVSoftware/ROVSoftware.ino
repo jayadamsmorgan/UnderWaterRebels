@@ -46,11 +46,11 @@ ADXL345 accelerometer;
 HMC5883L compass;
 #endif
 
-#define MOTOR1PIN                4
+#define MOTOR1PIN                2
 #define MOTOR2PIN                0
 #define MOTOR3PIN                1
 #define MOTOR4PIN                5
-#define MOTOR5PIN                2
+#define MOTOR5PIN                4
 #define MOTOR6PIN                3
 
 #define MOTORLOWMICROSECONDS     1465
@@ -75,7 +75,7 @@ HMC5883L compass;
 #define SERVO_MANIPULATOR_PIN    6
 #define SERVO_CAMERA_PIN         13
 
-#define SERVO_ANGLE_DELTA        3
+#define SERVO_ANGLE_DELTA        1
 
 #define MIN_CAMERA_ANGLE         20
 #define MAX_CAMERA_ANGLE         160
@@ -166,7 +166,7 @@ void controlPeripherals() {
   } else {
     // Set vertical thrust
     verticalMotorControl(verMotor1, js_val[2]);
-    verticalMotorControl(verMotor2, -js_val[2]);
+    verticalMotorControl(verMotor2, js_val[2]);
 
     // Set target for AutoDepth
     depthSetpoint = depth;
@@ -178,8 +178,8 @@ void controlPeripherals() {
   } else {
     // Set horizontal thrust
     horizontalMotorControl(horMotor1, -js_val[0], js_val[1], js_val[3], false);
-    horizontalMotorControl(horMotor2, js_val[0], js_val[1], -js_val[3], false);
-    horizontalMotorControl(horMotor3, js_val[0], -js_val[1], js_val[3], false);
+    horizontalMotorControl(horMotor2, -js_val[0], js_val[1], -js_val[3], false);
+    horizontalMotorControl(horMotor3, -js_val[0], -js_val[1], js_val[3], false);
     horizontalMotorControl(horMotor4, -js_val[0], -js_val[1], -js_val[3], false);
 
     // Set target for AutoYaw
@@ -241,7 +241,7 @@ void autoPitchAndDepth() {
   double output1, output2;
 
   output1 = depthOutput + pitchOutput;
-  output2 = - depthOutput + pitchOutput;
+  output2 = depthOutput - pitchOutput;
 
   // Value correction:
   if (output1 > 100.0) {
@@ -275,7 +275,7 @@ void autoPitch() {
   }
 
   verticalMotorControl(verMotor1, (char) -pitchOutput);
-  verticalMotorControl(verMotor2, (char) -pitchOutput);
+  verticalMotorControl(verMotor2, (char) pitchOutput);
 }
 
 // AutoDepth mode
@@ -292,7 +292,7 @@ void autoDepth() {
   }
 
   verticalMotorControl(verMotor1, (char) depthOutput);
-  verticalMotorControl(verMotor2, (char) - depthOutput);
+  verticalMotorControl(verMotor2, (char) depthOutput);
 }
 
 // AutoYaw mode
@@ -507,7 +507,7 @@ void setup() {
   // Init I2C connection for IMU
   Wire.begin();
   TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
-
+  
   // Init brushless motors
   pinMode(MOTOR1PIN, OUTPUT);
   pinMode(MOTOR2PIN, OUTPUT);
@@ -589,7 +589,7 @@ void setup() {
   }
   depthSetpoint = setupPressure;
 }
-
+#ifdef GY89
 void read_Acc() { //g
   compass.read();
   byte tl = compass.readReg(LSM303::TEMP_OUT_L);
@@ -628,7 +628,7 @@ void initgyro() {
   gyro.writeReg(L3G::CTRL_REG4, 0x20); // 2000 dps full scale, 70mdeg per LSB
   gyro.writeReg(L3G::CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 95 Hz
 }
-
+#endif
 // Function for updating depth
 void updateDepth() {
   pressureReadings[depthCounter % 5] = sensor.getPressure(ADC_2048);
