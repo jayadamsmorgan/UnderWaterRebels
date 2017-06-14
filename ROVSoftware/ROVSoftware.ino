@@ -46,12 +46,12 @@ ADXL345 accelerometer;
 HMC5883L compass;
 #endif
 
-#define MOTOR1PIN                45
-#define MOTOR2PIN                46
-#define MOTOR3PIN                44
-#define MOTOR4PIN                11
-#define MOTOR5PIN                13
-#define MOTOR6PIN                12
+#define MOTOR1PIN                4
+#define MOTOR2PIN                0
+#define MOTOR3PIN                1
+#define MOTOR4PIN                5
+#define MOTOR5PIN                2
+#define MOTOR6PIN                3
 
 #define MOTORLOWMICROSECONDS     1465
 #define MOTORHIGHMICROSECONDS    1510
@@ -62,18 +62,18 @@ HMC5883L compass;
 #define MID_SPEED_K              0.25
 #define LOW_SPEED_K              0.10
 
-#define MAIN_MANIP_ROT_PINA      9
-#define MAIN_MANIP_ROT_PINB      14
+#define MAIN_MANIP_ROT_PINA      19
+#define MAIN_MANIP_ROT_PINB      18
 
-#define MAIN_MANIP_TIGHT_PINA    28
-#define MAIN_MANIP_TIGHT_PINB    29
+#define MAIN_MANIP_TIGHT_PINA    40
+#define MAIN_MANIP_TIGHT_PINB    41
 
-#define MULTIPLEXOR_PIN          24
+#define MULTIPLEXOR_PIN          A0
 
-#define LED_PIN                  26
+#define LED_PIN                  11
 
-#define SERVO_MANIPULATOR_PIN    8
-#define SERVO_CAMERA_PIN         4
+#define SERVO_MANIPULATOR_PIN    6
+#define SERVO_CAMERA_PIN         13
 
 #define SERVO_ANGLE_DELTA        3
 
@@ -366,17 +366,10 @@ char receiveMessage() {
     char bit2 = (packetBuffer[6] >> 1) & 1;
     char bit3 = (packetBuffer[6] >> 2) & 1;
 
-    if (bit1 && bit2 && bit3) {
-      speedK = TURBO_SPEED_K;
-    } else if (bit1) {
-      speedK = HIGH_SPEED_K;
-    } else if (bit2) {
-      speedK = MID_SPEED_K;
-    } else if (bit3) {
-      speedK = LOW_SPEED_K;
-    } else {
-      speedK = MID_SPEED_K;
-    }
+    if (bit3) speedK = TURBO_SPEED_K;
+    else if (bit2) speedK = HIGH_SPEED_K;
+    else if (bit1) speedK = MID_SPEED_K;
+    else speedK = LOW_SPEED_K;
 
     isAutoPitch = (packetBuffer[6] >> 3) & 1;
     isAutoDepth = (packetBuffer[6] >> 4) & 1;
@@ -516,20 +509,25 @@ void setup() {
   TWBR = ((F_CPU / TWI_FREQ) - 16) / 2;
 
   // Init brushless motors
+  pinMode(MOTOR1PIN, OUTPUT);
+  pinMode(MOTOR2PIN, OUTPUT);
+  pinMode(MOTOR3PIN, OUTPUT);
+  pinMode(MOTOR4PIN, OUTPUT);
+  pinMode(MOTOR5PIN, OUTPUT);
+  pinMode(MOTOR6PIN, OUTPUT);
   horMotor1.attach(MOTOR1PIN);
   horMotor2.attach(MOTOR2PIN);
   horMotor3.attach(MOTOR3PIN);
   horMotor4.attach(MOTOR4PIN);
   verMotor1.attach(MOTOR5PIN);
   verMotor2.attach(MOTOR6PIN);
-  delay(3000);
+  delay(500);
   horMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor3.writeMicroseconds(MOTORMIDMICROSECONDS);
   horMotor4.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor1.writeMicroseconds(MOTORMIDMICROSECONDS);
   verMotor2.writeMicroseconds(MOTORMIDMICROSECONDS);
-  delay(5000);
 
   // Ethernet init
   Ethernet.begin(mac, ip);
