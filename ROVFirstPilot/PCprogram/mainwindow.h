@@ -6,6 +6,7 @@
 #include <QCameraInfo>
 #include <QCameraViewfinder>
 #include <QPixmap>
+#include <QTime>
 
 namespace Ui {
 class MainWindow;
@@ -19,6 +20,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void setpalprop();
+    QTime *timer;
     QCamera *camera;
     QCamera *camera2;
     QPixmap *red;
@@ -36,6 +38,9 @@ public slots:
     void openDebugWindow(bool trig);
 signals:
     void updateJoy();
+
+private slots:
+    void on_ptimer_clicked();
 
 };
 

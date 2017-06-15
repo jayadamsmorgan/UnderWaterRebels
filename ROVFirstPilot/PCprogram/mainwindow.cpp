@@ -1,9 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-bool camstate;
-bool cam2state;
-int cam2num = 1;
+bool camstate = false;
+bool cam2state = false;
+bool tstarted = false;
+bool fstarted = false;
+long long crtime = 0;
+long long mstime = 0;
+int cam2num = 0;
+int tcamid = 0;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -12,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
         camstate = false;
     cam2state = false;
-
+    timer  = new QTime();
     okauto = new QPalette();
     okauto->setColor(QPalette::WindowText,QColor(250,250,250));
     noauto = new QPalette();
@@ -23,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->debugw,SIGNAL(triggered(bool)),this,SLOT(openDebugWindow(bool)));
 
     setpalprop();
+    qDebug() << QCameraInfo::availableCameras().size();
     if(QCameraInfo::availableCameras().size() != 0)
     {
         camstate = true;
@@ -33,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     }
 
-    if(QCameraInfo::availableCameras().size() >= 2)
+    if(QCameraInfo::availableCameras().size() >= 3)
     {
         cam2state = true;
         camera2 = new QCamera(QCameraInfo::availableCameras().at(1));
@@ -41,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->camera2->setAspectRatioMode(Qt::IgnoreAspectRatio);
         camera2->start();
     }
+   // qDebug()<<"aaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 }
 
 void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pitch, int roll, int setyaw, int setpitch, bool connection, bool ayaw, bool apitch, bool adepth, bool leak)
@@ -49,7 +56,10 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
     ui->setdepth->setText("-> " + QString::number(setpitch));
     //ui->ping->setText("Ping: " + QString::number(ping));
     cam2num = cam2id;
-    qDebug()<<cam2num;
+    //qDebug()<<yaw << pitch << roll;
+    ui->yawlab->setText("Yaw: " + QString::number(yaw));
+    ui->pitchlab->setText("Pitch: " + QString::number(pitch));
+    ui->rollab->setText("Roll: " + QString::number(roll));
     switch(speed)
     {
         case 0:
@@ -60,6 +70,9 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
         break;
         case 2:
             ui->speed->setText("Speed: High");
+        break;
+        case 3:
+            ui->speed->setText("Speed: Turbo");
         break;
 
     }
@@ -73,9 +86,9 @@ void MainWindow::onupdateInfo(int cam2id, int depth, int speed, int yaw, int pit
 
     if(ayaw) ui->ayaw->setPalette(*okauto);
     else ui->ayaw->setPalette(*noauto);
-    if(apitch) ui->apitch->setPalette(*okauto);
+    if(adepth) ui->apitch->setPalette(*okauto);
     else ui->apitch->setPalette(*noauto);
-    if(adepth) ui->adepth->setPalette(*okauto);
+    if(apitch) ui->adepth->setPalette(*okauto);
     else ui->adepth->setPalette(*noauto);
 
 }
@@ -120,6 +133,44 @@ void MainWindow::setpalprop()
 
 void MainWindow::paintEvent(QPaintEvent *)
 {
+    if((fstarted) && (!tstarted))
+    {
+        long long deltatime = (timer->elapsed() - mstime)/1000;
+        int mins = 14 - deltatime/60;
+        int secs = 59 - deltatime%60;
+        if((mins <=3))
+        {
+            QPalette redpal;
+            redpal.setColor(QPalette::WindowText,Qt::red);
+            ui->timer->setPalette(redpal);
+            if(mins == 0 && secs == 0)
+            {
+            ui->timer->setText("00:00");
+            }
+            else
+            {
+                ui->timer->setText(QString::number(mins) + ":" + QString::number(secs));
+            }
+        }
+        else if(mins <=7)
+        {
+            QPalette yellpal;
+            yellpal.setColor(QPalette::WindowText,Qt::yellow);
+            ui->timer->setPalette(yellpal);
+            ui->timer->setText(QString::number(mins) + ":" + QString::number(secs));
+
+        }
+        else
+        {
+            if(secs >= 10)
+                ui->timer->setText(QString::number(mins) + ":" + QString::number(secs));
+            else
+                ui->timer->setText(QString::number(mins) + ":0" + QString::number(secs) );
+        }
+    }
+
+
+    //update();
 
     int camcount = QCameraInfo::availableCameras().size();
 
@@ -128,7 +179,7 @@ void MainWindow::paintEvent(QPaintEvent *)
         if(!camstate)
         {
         camstate = true;
-        camera = new QCamera(QCameraInfo::availableCameras().at(0));
+        camera = new QCamera(QCameraInfo::availableCameras().at(1 - tcamid ));
         camera->setViewfinder(ui->camera);
         ui->camera->setAspectRatioMode(Qt::IgnoreAspectRatio);
         camera->start();
@@ -139,14 +190,14 @@ void MainWindow::paintEvent(QPaintEvent *)
 
     if((camcount >= 2) && (!cam2state))
     {
-        if(!cam2state)
-        {
+
         cam2state = true;
-        camera2 = new QCamera(QCameraInfo::availableCameras().at(1));
+
+        camera2 = new QCamera(QCameraInfo::availableCameras().at(tcamid));
         camera2->setViewfinder(ui->camera2);
         ui->camera2->setAspectRatioMode(Qt::IgnoreAspectRatio);
         camera2->start();
-        }
+
     }
     else
     {cam2state = false;}
@@ -156,7 +207,8 @@ void MainWindow::paintEvent(QPaintEvent *)
 
 void MainWindow::replugCams(bool trig)
 {
-
+    if(tcamid == 0) tcamid == 1;
+    else if(tcamid == 1) tcamid = 0;
 
 }
 
@@ -169,3 +221,33 @@ void MainWindow::openDebugWindow(bool trig)
 {
 
 }
+
+void MainWindow::on_ptimer_clicked()
+{
+
+    if((!tstarted) && fstarted)
+    {
+
+        ui->ptimer->setText("restart");
+        tstarted = true;
+    }
+    else if((!fstarted) && (!tstarted))
+    {//start timer
+        QPalette whitepal;
+        whitepal.setColor(QPalette::WindowText,Qt::white);
+        ui->timer->setPalette(whitepal);
+        ui->ptimer->setText("stop");
+        timer->start();
+        mstime = timer->elapsed();
+        crtime = 900;
+        fstarted = true;
+    }
+    else if(tstarted && fstarted)
+    {
+        ui->ptimer->setText("start");
+        fstarted = false;
+        tstarted = false;
+
+    }
+}
+
